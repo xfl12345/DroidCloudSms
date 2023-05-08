@@ -1,4 +1,4 @@
-package cc.xfl12345.android.droidcloudsms;
+package cc.xfl12345.android.droidcloudsms.model;
 
 public class SynchronizeLock {
     protected volatile Boolean locked = Boolean.FALSE;

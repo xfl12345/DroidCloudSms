@@ -5,13 +5,39 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context=".MainActivity"
+    tools:context=".ui.MainActivity"
     tools:showIn="@layout/activity_main">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="@dimen/text_margin"
-        android:text="@string/large_text" />
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="手机号：">
+            </TextView>
+            <EditText
+                android:id="@+id/edit_text_phone_number"
+                android:maxLength="30"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:digits="@string/input_limit_only_char_and_num"
+                android:importantForAutofill="no"
+                android:inputType="phone"
+                tools:ignore="LabelFor">
+            </EditText>
+        </LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/text_margin"
+            android:text="@string/large_text" />
+    </LinearLayout>
+
 
 </androidx.core.widget.NestedScrollView>

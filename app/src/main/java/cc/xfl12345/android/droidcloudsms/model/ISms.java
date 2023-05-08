@@ -1,4 +1,4 @@
-package cc.xfl12345.android.droidcloudsms;
+package cc.xfl12345.android.droidcloudsms.model;
 
 import android.app.PendingIntent;
 import android.os.RemoteException;

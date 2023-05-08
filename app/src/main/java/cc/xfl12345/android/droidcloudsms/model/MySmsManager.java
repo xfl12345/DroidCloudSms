@@ -1,4 +1,4 @@
-package cc.xfl12345.android.droidcloudsms;
+package cc.xfl12345.android.droidcloudsms.model;
 
 import static android.telephony.SmsManager.RESULT_NO_DEFAULT_SMS_APP;
 

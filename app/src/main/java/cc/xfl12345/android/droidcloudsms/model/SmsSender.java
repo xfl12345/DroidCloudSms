@@ -1,4 +1,4 @@
-package cc.xfl12345.android.droidcloudsms;
+package cc.xfl12345.android.droidcloudsms.model;
 
 import android.app.Activity;
 import android.app.PendingIntent;

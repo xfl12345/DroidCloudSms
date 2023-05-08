@@ -1,4 +1,4 @@
-package cc.xfl12345.android.droidcloudsms;
+package cc.xfl12345.android.droidcloudsms.model;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -39,7 +39,7 @@ public class MyShizukuContext implements
         this.context = context;
     }
 
-    public void initService() {
+    public void testSendSms(SmsContent smsContent) {
         Method mPackageManagerGetPackagesForUid;
         Object iPmInstance;
 
@@ -61,7 +61,7 @@ public class MyShizukuContext implements
 
 
             SmsSender smsSender = new SmsSender(context);
-            smsSender.sendMessage("测试", "10001", 1);
+            smsSender.sendMessage(smsContent.getContent(), smsContent.getPhoneNumber(), 1);
 
         } catch (Exception e) {
             Log.e(TAG, e.toString());
