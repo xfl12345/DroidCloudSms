@@ -1,0 +1,73 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'cc.xfl12345.android.droidcloudsms'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "cc.xfl12345.android.droidcloudsms"
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+
+    // shizuku API
+    String shizukuVersion = '13.1.1';
+
+    // https://mvnrepository.com/artifact/dev.rikka.shizuku/api
+    implementation group: 'dev.rikka.shizuku', name: 'api', version: shizukuVersion
+
+    // https://mvnrepository.com/artifact/dev.rikka.shizuku/provider
+    implementation group: 'dev.rikka.shizuku', name: 'provider', version: shizukuVersion
+
+    // https://mvnrepository.com/artifact/dev.rikka.shizuku/shared
+    implementation group: 'dev.rikka.shizuku', name: 'shared', version: shizukuVersion
+
+    // https://mvnrepository.com/artifact/dev.rikka.shizuku/aidl
+    implementation group: 'dev.rikka.shizuku', name: 'aidl', version: shizukuVersion
+
+
+    // LSPosed Hidden API Bypass
+    // https://mvnrepository.com/artifact/org.lsposed.hiddenapibypass/hiddenapibypass
+    implementation group: 'org.lsposed.hiddenapibypass', name: 'hiddenapibypass', version: '4.3'
+
+
+    // xposed API
+    // https://mvnrepository.com/artifact/de.robv.android.xposed/api
+    compileOnly group: 'de.robv.android.xposed', name: 'api', version: '82'
+
+    // JSON support
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.0'
+
+}
