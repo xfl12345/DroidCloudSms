@@ -1,18 +1,12 @@
 package cc.xfl12345.android.droidcloudsms.model;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
-import android.os.IBinder;
-import android.util.Log;
-import android.widget.Toast;
 
-import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import rikka.shizuku.Shizuku;
-import rikka.shizuku.ShizukuBinderWrapper;
-import rikka.shizuku.SystemServiceHelper;
 
 public class MyShizukuContext implements
         Shizuku.OnBinderDeadListener,
@@ -20,16 +14,13 @@ public class MyShizukuContext implements
         Shizuku.OnRequestPermissionResultListener {
     public static final String TAG = "shizuku";
 
-    private Context context;
+    private final Context context;
 
-    public static int REQUEST_CODE = 888;
+    private IdGenerator idGenerator = new IdGenerator(0);
 
-    private boolean granted = false;
+    private volatile boolean granted = false;
 
-    private final ThreadLocal<SynchronizeLock> synchronizeLockThreadLocal = new ThreadLocal<>();
-
-    IPackageManager packageManager;
-
+    private Map<String, SynchronizeLock> synchronizeLocks = new ConcurrentHashMap<>();
 
     public boolean isGranted() {
         return granted;
@@ -37,37 +28,6 @@ public class MyShizukuContext implements
 
     public MyShizukuContext(Context context) {
         this.context = context;
-    }
-
-    public void testSendSms(SmsContent smsContent) {
-        Method mPackageManagerGetPackagesForUid;
-        Object iPmInstance;
-
-        try {
-            ShizukuBinderWrapper shizukuBinderWrapper = new ShizukuBinderWrapper(SystemServiceHelper.getSystemService("package"));
-            Log.i(TAG, shizukuBinderWrapper.getInterfaceDescriptor());
-            packageManager = IPackageManager.Stub.asInterface(shizukuBinderWrapper);
-            int packageUid = 10051;
-            Log.i(TAG, "Package name of UID [" + packageUid + "] = " + packageManager.getPackagesForUid(packageUid)[0]);
-
-            Class<?> iPmClass = Class.forName("android.content.pm.IPackageManager");
-            @SuppressLint("PrivateApi")
-            Class<?> iPmStub = Class.forName("android.content.pm.IPackageManager$Stub");
-            Method asInterfaceMethod = iPmStub.getMethod("asInterface", IBinder.class);
-            iPmInstance = asInterfaceMethod.invoke(null, new ShizukuBinderWrapper(SystemServiceHelper.getSystemService("package")));
-
-            mPackageManagerGetPackagesForUid = iPmClass.getMethod("getPackagesForUid", int.class);
-            Log.i(TAG, "Package name of UID [" + packageUid + "] = " + ((String[]) mPackageManagerGetPackagesForUid.invoke(iPmInstance, packageUid))[0]);
-
-
-            SmsSender smsSender = new SmsSender(context);
-            smsSender.sendMessage(smsContent.getContent(), smsContent.getPhoneNumber(), 1);
-
-        } catch (Exception e) {
-            Log.e(TAG, e.toString());
-            Toast.makeText(context, e.getMessage(), Toast.LENGTH_LONG).show();
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -82,23 +42,25 @@ public class MyShizukuContext implements
 
     @Override
     public void onRequestPermissionResult(int requestCode, int grantResult) {
-        if (requestCode == REQUEST_CODE) {
-            granted = grantResult == PackageManager.PERMISSION_GRANTED;
-            Toast.makeText(context, granted ? "已获得 Shizuku 授权" : "Shizuku 拒绝授权", Toast.LENGTH_LONG).show();
-            SynchronizeLock lock = synchronizeLockThreadLocal.get();
-            if (lock != null) {
-                try {
-                    lock.justSynchronize();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+        granted = grantResult == PackageManager.PERMISSION_GRANTED;
+        NotificationUtils.postNotification(context, "Shizuku", granted ? "已获得 Shizuku 授权" : "Shizuku 拒绝授权");
+        try {
+            String requestCodeString = "" + requestCode;
+            SynchronizeLock lock = synchronizeLocks.putIfAbsent(requestCodeString, createSynLock());
+            if (lock == null) {
+                lock = synchronizeLocks.get(requestCodeString);
             }
+            if (lock != null) {
+                lock.justSynchronize();
+                synchronizeLocks.remove(requestCodeString);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-
     }
 
     private SynchronizeLock createSynLock() {
-        return new SynchronizeLock(30, 0);
+        return new SynchronizeLock(30000, 0);
     }
 
     public boolean requirePermission() {
@@ -109,17 +71,32 @@ public class MyShizukuContext implements
         boolean result = false;
         if (!Shizuku.shouldShowRequestPermissionRationale()) {
             Shizuku.addRequestPermissionResultListener(this);
-            Shizuku.requestPermission(REQUEST_CODE);
+
             SynchronizeLock lock = createSynLock();
-            synchronizeLockThreadLocal.set(lock);
+            int requestCodeInt = idGenerator.generate();
+            String requestCodeString;
+            synchronized (TAG) {
+                requestCodeString = "" + requestCodeInt;
+                while (synchronizeLocks.containsKey(requestCodeString)) {
+                    requestCodeInt = idGenerator.generate();
+                    requestCodeString = "" + requestCodeInt;
+                }
+
+                synchronizeLocks.put(requestCodeString, lock);
+            }
+
+            Shizuku.requestPermission(requestCodeInt);
             try {
                 lock.justSynchronize();
+                synchronizeLocks.remove(requestCodeString);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            synchronizeLockThreadLocal.remove();
+
             result = granted;
             Shizuku.removeRequestPermissionResultListener(this);
+        } else {
+            NotificationUtils.postNotification(context, "Shizuku", "Shizuku 拒绝授权并且不再询问");
         }
 
         return result;

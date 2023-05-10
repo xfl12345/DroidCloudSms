@@ -40,6 +40,16 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
+    // //noinspection GradleCompatible
+    // compileOnly 'com.android.support:appcompat-v7:24.0.0'
+
+    // // https://mvnrepository.com/artifact/androidx.legacy/legacy-support-v4
+    // implementation group: 'androidx.legacy', name: 'legacy-support-v4', version: '1.0.0'
+
+    // // https://mvnrepository.com/artifact/com.android.support/support-v4
+    // //noinspection GradleCompatible
+    // implementation group: 'com.android.support', name: 'support-v4', version: '28.0.0'
+
 
     // shizuku API
     String shizukuVersion = '13.1.1';
@@ -61,13 +71,11 @@ dependencies {
     // https://mvnrepository.com/artifact/org.lsposed.hiddenapibypass/hiddenapibypass
     implementation group: 'org.lsposed.hiddenapibypass', name: 'hiddenapibypass', version: '4.3'
 
-
-    // xposed API
-    // https://mvnrepository.com/artifact/de.robv.android.xposed/api
-    compileOnly group: 'de.robv.android.xposed', name: 'api', version: '82'
-
     // JSON support
     // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.0'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.5'
+
+    // 权限请求框架：https://github.com/getActivity/XXPermissions
+    implementation 'com.github.getActivity:XXPermissions:18.0'
 
 }

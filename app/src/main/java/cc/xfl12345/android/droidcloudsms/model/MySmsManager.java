@@ -23,7 +23,6 @@ public class MySmsManager {
     private static ISms iSms = null;
 
     public MySmsManager() throws ReflectiveOperationException, RemoteException {
-
         iSms = new ISms();
     }
 

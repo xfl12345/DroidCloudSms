@@ -1,6 +1,6 @@
 package cc.xfl12345.android.droidcloudsms.model;
 
-public class SmsContent {
+public class SmContent {
     private String phoneNumber;
 
     private String content;
