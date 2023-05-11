@@ -36,9 +36,23 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.navigation:navigation-fragment:2.5.3'
+    implementation 'androidx.navigation:navigation-ui:2.5.3'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    // // https://mvnrepository.com/artifact/com.google.android.material/material
+    // implementation group: 'com.google.android.material', name: 'material', version: '1.9.0'
+
+    // String material3Version = '1.1.0-rc01'
+    //
+    // // https://mvnrepository.com/artifact/androidx.compose.material3/material3
+    // implementation group: 'androidx.compose.material3', name: 'material3', version: material3Version
+    //
+    // // https://mvnrepository.com/artifact/androidx.compose.material3/material3
+    // implementation group: 'androidx.compose.material3', name: 'material3-window-size-class', version: material3Version
+
 
     // //noinspection GradleCompatible
     // compileOnly 'com.android.support:appcompat-v7:24.0.0'
@@ -77,5 +91,11 @@ dependencies {
 
     // 权限请求框架：https://github.com/getActivity/XXPermissions
     implementation 'com.github.getActivity:XXPermissions:18.0'
+
+    // // https://mvnrepository.com/artifact/com.github.zcweng/switch-button
+    // implementation group: 'com.github.zcweng', name: 'switch-button', version: '0.0.3'
+
+    // https://github.com/iielse/switchbutton
+    implementation 'com.github.iielse:switchbutton:1.0.4'
 
 }

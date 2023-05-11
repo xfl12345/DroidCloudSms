@@ -1,35 +1,33 @@
 package cc.xfl12345.android.droidcloudsms.ui;
 
 import android.os.Bundle;
-
-import com.google.android.material.appbar.CollapsingToolbarLayout;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.hjq.permissions.OnPermissionCallback;
-import com.hjq.permissions.Permission;
-import com.hjq.permissions.XXPermissions;
+import android.os.PersistableBundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
+import androidx.navigation.ui.AppBarConfiguration;
+import androidx.navigation.ui.NavigationUI;
 
-import android.os.PersistableBundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.EditText;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
+import com.hjq.permissions.OnPermissionCallback;
+import com.hjq.permissions.Permission;
+import com.hjq.permissions.XXPermissions;
 
 import java.util.List;
 
-import cc.xfl12345.android.droidcloudsms.AnyLauncherMain;
-import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
-import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.databinding.ActivityMainBinding;
-import cc.xfl12345.android.droidcloudsms.model.SmContent;
-import cc.xfl12345.android.droidcloudsms.model.SmSender;
-import rikka.shizuku.Shizuku;
 
 public class MainActivity extends AppCompatActivity {
+
+    private AppBarConfiguration mAppBarConfiguration;
+
+    private NavController navController;
 
     private ActivityMainBinding binding;
 
@@ -40,32 +38,22 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        Toolbar toolbar = binding.toolbar;
-        setSupportActionBar(toolbar);
-        CollapsingToolbarLayout toolBarLayout = binding.toolbarLayout;
-        toolBarLayout.setTitle(getTitle());
+        DrawerLayout drawerLayout = binding.drawerLayout;
+        NavigationView navigationView = binding.navView;
 
-        FloatingActionButton fab = binding.fab;
+        mAppBarConfiguration = new AppBarConfiguration.Builder(
+            R.id.nav_welcome,
+            R.id.nav_android_permission_manager,
+            R.id.nav_test
+        )
+        .setOpenableLayout(drawerLayout)
+        .build();
+        navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
+        NavigationUI.setupWithNavController(navigationView, navController);
 
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String phoneNumber = getStrFromEditTextById(R.id.edit_text_phone_number);
-                if (phoneNumber == null || phoneNumber.equals("")) {
-                    phoneNumber = "10086";
-                }
+        FloatingActionButton floatingActionButton = binding.appBarMain.buttonNavigationPopup;
+        floatingActionButton.setOnClickListener((view) -> binding.drawerLayout.open());
 
-                SmContent smContent = new SmContent();
-                smContent.setContent("测试");
-                smContent.setPhoneNumber(phoneNumber);
-
-                new Thread(() -> {
-                    AnyLauncherMain anyLauncherMain = ((MyApplication) getApplication()).getAnyLaucherMain();
-                    SmSender smSender = anyLauncherMain.getSmSender();
-                    smSender.sendMessage(smContent.getContent(), smContent.getPhoneNumber());
-                }).start();
-            }
-        });
 
         XXPermissions.with(this)
             .permission(Permission.NOTIFICATION_SERVICE)
@@ -89,6 +77,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onSupportNavigateUp() {
+        return NavigationUI.navigateUp(navController, mAppBarConfiguration) || super.onSupportNavigateUp();
+    }
+
+    @Override
     public void onPostCreate(@Nullable Bundle savedInstanceState, @Nullable PersistableBundle persistentState) {
         super.onPostCreate(savedInstanceState, persistentState);
     }
@@ -100,8 +93,4 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-    public String getStrFromEditTextById(int id){
-        return ((EditText) binding.getRoot().findViewById(id))
-            .getText().toString();
-    }
 }
