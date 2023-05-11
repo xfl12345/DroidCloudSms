@@ -39,6 +39,7 @@ public class AndroidPermissionManagerFragment extends Fragment {
         List<Map.Entry<String, String>> entryList = new ArrayList<>(2);
         entryList.add(Map.entry(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
         entryList.add(Map.entry(Permission.POST_NOTIFICATIONS, "发送通知权限"));
+        entryList.add(Map.entry(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化选项权限"));
 
         listView = binding.myList;
         listView.setAdapter(new AndroidPermissionListAdapter(requireContext(), entryList));

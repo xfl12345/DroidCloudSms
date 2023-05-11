@@ -1,11 +1,6 @@
 package cc.xfl12345.android.droidcloudsms;
 
-import static android.content.Context.NOTIFICATION_SERVICE;
-
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.Context;
-import android.os.Build;
 import android.os.RemoteException;
 
 import androidx.annotation.NonNull;
@@ -49,19 +44,8 @@ public class AnyLauncherMain {
         return smSender;
     }
 
-
     public AnyLauncherMain(@NonNull Context context) {
         this.context = context;
-
-        NotificationManager notificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){   //版本大于等于 安卓8.0
-            NotificationChannel channel = new NotificationChannel(
-                NotificationUtils.channelId,
-                NotificationUtils.channelName,
-                NotificationManager.IMPORTANCE_HIGH
-            );
-            notificationManager.createNotificationChannel(channel);
-        }
 
         myShizukuContext = new MyShizukuContext(context);
     }
