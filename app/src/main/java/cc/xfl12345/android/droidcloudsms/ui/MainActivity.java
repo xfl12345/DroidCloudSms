@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         floatingActionButton.setOnClickListener((view) -> binding.drawerLayout.open());
 
 
+        // 如果未全部授权，则转跳至授权管理器界面
         if (!((MyApplication) getApplication()).isAllPermissionGranted()) {
             Bundle bundle = new Bundle();
             bundle.putBoolean("needJumpBackWelcomePage", true);

@@ -48,6 +48,8 @@ public class AndroidPermissionListAdapter extends BaseAdapter {
 
     @Override
     public long getItemId(int position) {
+        // String permissionName = dataList.get(position).getKey();
+        // return isGranted(permissionName) ? (permissionName + ":true").hashCode() : (permissionName + ":false").hashCode();
         return position;
     }
 
