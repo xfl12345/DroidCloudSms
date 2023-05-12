@@ -13,6 +13,7 @@ import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.RemoteException;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -28,17 +29,38 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
+import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
+import cc.xfl12345.android.droidcloudsms.model.SmSender;
 
 public class MyApplication extends Application {
     public static final int STALE_NOTIFICATION_ID = 0;
 
     private Context context;
 
-    private AnyLauncherMain anyLauncherMain;
+    private MyShizukuContext myShizukuContext;
 
-    public AnyLauncherMain getAnyLaucherMain() {
-        return anyLauncherMain;
+    public MyShizukuContext getMyShizukuContext() {
+        return myShizukuContext;
+    }
+
+    private SmSender smSender = null;
+
+    public SmSender getSmSender() {
+        if (smSender == null) {
+            if (myShizukuContext.requirePermission()) {
+                try {
+                    smSender = new SmSender(context);
+                } catch (ReflectiveOperationException | RemoteException e) {
+                    NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + e.getMessage());
+                    e.printStackTrace();
+                }
+            } else {
+                NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + "Shizuku 未授权");
+            }
+        }
+
+        return smSender;
     }
 
     private NotificationManager notificationManager;
@@ -53,6 +75,7 @@ public class MyApplication extends Application {
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
+        myShizukuContext = new MyShizukuContext(context);
 
         permissionlist = new ArrayList<>(3);
         permissionlist.add(Map.entry(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
@@ -110,8 +133,6 @@ public class MyApplication extends Application {
                 MyActivityManager.removeActivity(activity);
             }
         });
-
-        anyLauncherMain = new AnyLauncherMain(getApplicationContext());
 
         // 吊起前台保活服务
         foregroundServiceIntent = new Intent().setClass(getApplicationContext(), ForegroundService.class);

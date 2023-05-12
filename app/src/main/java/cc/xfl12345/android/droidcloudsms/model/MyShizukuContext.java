@@ -35,6 +35,7 @@ public class MyShizukuContext implements
 
     public MyShizukuContext(Context context) {
         this.context = context;
+        refreshPermissionStatus();
         Shizuku.addBinderReceivedListener(this);
         Shizuku.addBinderDeadListener(this);
     }

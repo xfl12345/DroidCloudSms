@@ -11,7 +11,6 @@ import android.widget.EditText;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import cc.xfl12345.android.droidcloudsms.AnyLauncherMain;
 import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
 import cc.xfl12345.android.droidcloudsms.databinding.FragmentTestBinding;
@@ -49,8 +48,7 @@ public class TestFragment extends Fragment {
             smContent.setPhoneNumber(phoneNumber);
 
             new Thread(() -> {
-                AnyLauncherMain anyLauncherMain = ((MyApplication) view1.getContext().getApplicationContext()).getAnyLaucherMain();
-                SmSender smSender = anyLauncherMain.getSmSender();
+                SmSender smSender = ((MyApplication) view1.getContext().getApplicationContext()).getSmSender();
                 smSender.sendMessage(smContent.getContent(), smContent.getPhoneNumber());
             }).start();
         });

@@ -10,12 +10,17 @@
         android:label="@string/nav_label_welcome"
         tools:layout="@layout/fragment_welcome" />
 
-
     <fragment
         android:id="@+id/nav_android_permission_manager"
         android:name="cc.xfl12345.android.droidcloudsms.ui.AndroidPermissionManagerFragment"
         android:label="@string/nav_label_android_permission_manager"
         tools:layout="@layout/fragment_android_permission_manager" />
+
+    <fragment
+        android:id="@+id/nav_status"
+        android:name="cc.xfl12345.android.droidcloudsms.ui.StatusFragment"
+        android:label="@string/nav_label_status"
+        tools:layout="@layout/fragment_status" />
 
     <fragment
         android:id="@+id/nav_test"
