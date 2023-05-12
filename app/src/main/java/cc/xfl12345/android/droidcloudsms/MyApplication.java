@@ -40,6 +40,9 @@ public class MyApplication extends Application {
         super.onCreate();
         context = getApplicationContext();
 
+        // 注册通用通知回调
+        NotificationUtils.registerReceiver(context);
+
         notificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {   // 版本大于等于 安卓8.0
             NotificationChannel channel = new NotificationChannel(
@@ -91,7 +94,7 @@ public class MyApplication extends Application {
 
         // 吊起前台保活服务
         Intent intent = new Intent().setClass(getApplicationContext(), ForegroundService.class);
-        bindService(intent, new ServiceConnection() {
+        ServiceConnection emptyServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
             }
@@ -99,7 +102,8 @@ public class MyApplication extends Application {
             @Override
             public void onServiceDisconnected(ComponentName name) {
             }
-        }, Context.BIND_AUTO_CREATE);
+        };
+        bindService(intent, emptyServiceConnection, Context.BIND_AUTO_CREATE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
