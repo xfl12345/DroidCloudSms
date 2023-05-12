@@ -21,13 +21,14 @@ import androidx.core.app.NotificationCompat;
 import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
-import cc.xfl12345.android.droidcloudsms.model.MyActivityManager;
 
 public class MyApplication extends Application {
     public static final int STALE_NOTIFICATION_ID = 0;
@@ -43,6 +44,10 @@ public class MyApplication extends Application {
     private NotificationManager notificationManager;
 
     public static List<Map.Entry<String, String>> permissionlist = new ArrayList<>();
+
+    private Intent foregroundServiceIntent;
+
+    private ServiceConnection foregroundServiceConnection;
 
     @Override
     public void onCreate() {
@@ -74,6 +79,7 @@ public class MyApplication extends Application {
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
+                MyActivityManager.addActivity(activity);
             }
 
             @Override
@@ -101,14 +107,15 @@ public class MyApplication extends Application {
 
             @Override
             public void onActivityDestroyed(@NonNull Activity activity) {
+                MyActivityManager.removeActivity(activity);
             }
         });
 
         anyLauncherMain = new AnyLauncherMain(getApplicationContext());
 
         // 吊起前台保活服务
-        Intent intent = new Intent().setClass(getApplicationContext(), ForegroundService.class);
-        ServiceConnection emptyServiceConnection = new ServiceConnection() {
+        foregroundServiceIntent = new Intent().setClass(getApplicationContext(), ForegroundService.class);
+        foregroundServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
             }
@@ -117,17 +124,25 @@ public class MyApplication extends Application {
             public void onServiceDisconnected(ComponentName name) {
             }
         };
-        bindService(intent, emptyServiceConnection, Context.BIND_AUTO_CREATE);
+        bindService(foregroundServiceIntent, foregroundServiceConnection, Context.BIND_IMPORTANT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
+            startForegroundService(foregroundServiceIntent);
         } else {
-            startService(intent);
+            startService(foregroundServiceIntent);
         }
+    }
+
+    public void justExit() {
+        onTerminate();
+        // System.exit(0);
     }
 
     @Override
     public void onTerminate() {
-
+        notificationManager.cancel(STALE_NOTIFICATION_ID);
+        MyActivityManager.finishAllActivity();
+        unbindService(foregroundServiceConnection);
+        stopService(foregroundServiceIntent);
         super.onTerminate();
     }
 
@@ -165,5 +180,46 @@ public class MyApplication extends Application {
 
     public boolean isAllPermissionGranted() {
         return XXPermissions.isGranted(context, MyApplication.permissionlist.stream().map(Map.Entry::getKey).collect(Collectors.toList()));
+    }
+
+    public static Activity getCurrentActivity() {
+        return MyActivityManager.getCurrentActivity();
+    }
+
+
+    private static class MyActivityManager {
+        private static WeakReference<Activity> currentActivity = null;
+
+        public static void setCurrentActivity(Activity activity) {
+            currentActivity = new WeakReference<>(activity);
+        }
+
+        public static Activity getCurrentActivity() {
+            return currentActivity == null ? null : currentActivity.get();
+        }
+
+        private static final List<Activity> activityStack = new CopyOnWriteArrayList<>();
+
+        public static void addActivity(Activity activity) {
+            activityStack.add(activity);
+        }
+
+        public static void removeActivity(Activity activity) {
+            activityStack.remove(activity);
+        }
+
+        /**
+         * 结束所有Activity
+         * <a herf="https://blog.csdn.net/lfq88/article/details/126742032">source code URL</a>
+         */
+        public static void finishAllActivity() {
+            for (int i = 0, size = activityStack.size(); i < size; i++) {
+                if (null != activityStack.get(i)) {
+                    activityStack.get(i).finish();
+                }
+            }
+
+            activityStack.clear();
+        }
     }
 }

@@ -54,6 +54,7 @@ public class ForegroundService extends Service {
             }
         }
 
+
     }
 
     @Override
@@ -62,7 +63,6 @@ public class ForegroundService extends Service {
         Log.i(TAG, "onDestroy...");
         stopForeground(true);// 停止前台服务--参数：表示是否移除之前的通知
     }
-
 
 
     @Override

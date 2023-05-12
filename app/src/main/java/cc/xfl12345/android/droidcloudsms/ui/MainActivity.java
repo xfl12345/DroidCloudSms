@@ -44,6 +44,11 @@ public class MainActivity extends AppCompatActivity {
         DrawerLayout drawerLayout = binding.drawerLayout;
         NavigationView navigationView = binding.navView;
 
+        // 为 安全退出APP的按钮 实现功能
+        binding.navViewFooterBoxButtonExitApp.setOnClickListener((view) -> {
+            ((MyApplication) getApplicationContext()).justExit();
+        });
+
         mAppBarConfiguration = new AppBarConfiguration.Builder(
             R.id.nav_welcome,
             R.id.nav_android_permission_manager,
