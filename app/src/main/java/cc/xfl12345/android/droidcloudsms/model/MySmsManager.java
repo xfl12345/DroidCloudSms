@@ -20,10 +20,10 @@ public class MySmsManager {
 
     private int mSubId = Integer.MAX_VALUE;
 
-    private static ISms iSms = null;
+    private static MySms mySms = null;
 
     public MySmsManager() throws ReflectiveOperationException, RemoteException {
-        iSms = new ISms();
+        mySms = new MySms();
     }
 
     private interface SubscriptionResolverResult {
@@ -58,15 +58,15 @@ public class MySmsManager {
      * Returns the ISms service, or throws an UnsupportedOperationException if
      * the service does not exist.
      */
-    private static ISms getISmsServiceOrThrow() {
-        if (iSms == null) {
+    private static MySms getISmsServiceOrThrow() {
+        if (mySms == null) {
             throw new UnsupportedOperationException("Sms is not supported");
         }
-        return iSms;
+        return mySms;
     }
 
-    private static ISms getISmsService() {
-        return iSms;
+    private static MySms getISmsService() {
+        return mySms;
     }
 
     /**
@@ -236,9 +236,9 @@ public class MySmsManager {
             resolveSubscriptionForOperation(new SubscriptionResolverResult() {
                 @Override
                 public void onSuccess(int subId) {
-                    ISms iSms = getISmsServiceOrThrow();
+                    MySms mySms = getISmsServiceOrThrow();
                     try {
-                        iSms.sendTextForSubscriber(subId, packageName, attributionTag,
+                        mySms.sendTextForSubscriber(subId, packageName, attributionTag,
                                 destinationAddress, scAddress, text, sentIntent, deliveryIntent,
                                 persistMessage, messageId);
                     } catch (RemoteException e) {
@@ -256,9 +256,9 @@ public class MySmsManager {
         } else {
             // Not persisting the message, used by sendTextMessageWithoutPersisting() and is not
             // visible to the user.
-            ISms iSms = getISmsServiceOrThrow();
+            MySms mySms = getISmsServiceOrThrow();
             try {
-                iSms.sendTextForSubscriber(getSubscriptionId(), packageName, attributionTag,
+                mySms.sendTextForSubscriber(getSubscriptionId(), packageName, attributionTag,
                         destinationAddress, scAddress, text, sentIntent, deliveryIntent,
                         persistMessage, messageId);
             } catch (RemoteException e) {
@@ -272,8 +272,8 @@ public class MySmsManager {
     private void resolveSubscriptionForOperation(SubscriptionResolverResult resolverResult) {
         int subId = getSubscriptionId();
         boolean isSmsSimPickActivityNeeded = false;
-        ISms iSms = getISmsService();
-        if (iSms != null) {
+        MySms mySms = getISmsService();
+        if (mySms != null) {
             // Determines if the SMS SIM pick activity should be shown. This is only shown if:
             // 1) The device has multiple active subscriptions and an SMS default subscription
             //    hasn't been set, and
@@ -282,7 +282,7 @@ public class MySmsManager {
             // if Q+, do not perform requested operation if these two operations are not set. If
             // <P, perform these operations on phone 0 (for compatibility purposes, since we
             // used to not wait for the result of this activity).
-            isSmsSimPickActivityNeeded = iSms.isSmsSimPickActivityNeeded(subId);
+            isSmsSimPickActivityNeeded = mySms.isSmsSimPickActivityNeeded(subId);
         }
         if (!isSmsSimPickActivityNeeded) {
             sendResolverResult(resolverResult, subId, false /*pickActivityShown*/);
@@ -378,8 +378,8 @@ public class MySmsManager {
                     @Override
                     public void onSuccess(int subId) {
                         try {
-                            ISms iSms = getISmsServiceOrThrow();
-                            iSms.sendMultipartTextForSubscriber(subId, packageName, attributionTag,
+                            MySms mySms = getISmsServiceOrThrow();
+                            mySms.sendMultipartTextForSubscriber(subId, packageName, attributionTag,
                                     destinationAddress, scAddress, parts, sentIntents,
                                     deliveryIntents, persistMessage, messageId);
                         } catch (RemoteException e) {
@@ -397,9 +397,9 @@ public class MySmsManager {
             } else {
                 // Called by apps that are not user facing, don't show disambiguation dialog.
                 try {
-                    ISms iSms = getISmsServiceOrThrow();
-                    if (iSms != null) {
-                        iSms.sendMultipartTextForSubscriber(getSubscriptionId(), packageName,
+                    MySms mySms = getISmsServiceOrThrow();
+                    if (mySms != null) {
+                        mySms.sendMultipartTextForSubscriber(getSubscriptionId(), packageName,
                                 attributionTag, destinationAddress, scAddress, parts, sentIntents,
                                 deliveryIntents, persistMessage, messageId);
                     }

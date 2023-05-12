@@ -7,8 +7,9 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Objects;
 
-public class ISms {
+public class MySms {
     protected SystemServiceBinderHelper serviceBinderHelper;
+
 
     private Method methodIsSmsSimPickActivityNeeded;
 
@@ -16,8 +17,10 @@ public class ISms {
 
     private Method methodSendTextForSubscriber;
 
+    private Method methodSendMultipartTextForSubscriber;
 
-    public ISms() throws ReflectiveOperationException, RemoteException {
+
+    public MySms() throws ReflectiveOperationException, RemoteException {
         serviceBinderHelper = new SystemServiceBinderHelper("isms");
 
         methodIsSmsSimPickActivityNeeded = Objects.requireNonNull(
@@ -26,6 +29,38 @@ public class ISms {
 
         methodGetPreferredSmsSubscription = Objects.requireNonNull(
             serviceBinderHelper.getServiceDeclaredMethod("getPreferredSmsSubscription")
+        );
+
+        methodSendTextForSubscriber = Objects.requireNonNull(
+            serviceBinderHelper.getServiceDeclaredMethod(
+                "sendTextForSubscriber",
+                int.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class,
+                PendingIntent.class,
+                PendingIntent.class,
+                boolean.class,
+                long.class
+            )
+        );
+
+        methodSendMultipartTextForSubscriber = Objects.requireNonNull(
+            serviceBinderHelper.getServiceDeclaredMethod(
+                "sendMultipartTextForSubscriber",
+                int.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class,
+                List.class,
+                List.class,
+                List.class,
+                boolean.class,
+                long.class
+            )
         );
 
     }
@@ -60,24 +95,23 @@ public class ISms {
             boolean persistMessageForNonDefaultSmsApp,
             long messageId) throws RemoteException {
         try {
-            serviceBinderHelper.executeServiceDeclaredMethod(
-                    "sendTextForSubscriber",
-                    subId,
-                    callingPackage,
-                    callingAttributionTag,
-                    destAddr,
-                    scAddr,
-                    text,
-                    sentIntent,
-                    deliveryIntent,
-                    persistMessageForNonDefaultSmsApp,
-                    messageId
+            methodSendTextForSubscriber.invoke(
+                serviceBinderHelper.getServiceInstance(),
+                subId,
+                callingPackage,
+                callingAttributionTag,
+                destAddr,
+                scAddr,
+                text,
+                sentIntent,
+                deliveryIntent,
+                persistMessageForNonDefaultSmsApp,
+                messageId
             );
         } catch (ReflectiveOperationException e) {
             throw new RemoteException(e.getMessage());
         }
     }
-
 
     public void sendMultipartTextForSubscriber(
             int subId,
@@ -91,18 +125,18 @@ public class ISms {
             boolean persistMessageForNonDefaultSmsApp,
             long messageId) throws RemoteException {
         try {
-            serviceBinderHelper.executeServiceDeclaredMethod(
-                    "sendMultipartTextForSubscriber",
-                    subId,
-                    callingPkg,
-                    callingAttributionTag,
-                    destinationAddress,
-                    scAddress,
-                    parts,
-                    sentIntents,
-                    deliveryIntents,
-                    persistMessageForNonDefaultSmsApp,
-                    messageId
+            methodSendMultipartTextForSubscriber.invoke(
+                serviceBinderHelper.getServiceInstance(),
+                subId,
+                callingPkg,
+                callingAttributionTag,
+                destinationAddress,
+                scAddress,
+                parts,
+                sentIntents,
+                deliveryIntents,
+                persistMessageForNonDefaultSmsApp,
+                messageId
             );
         } catch (ReflectiveOperationException e) {
             throw new RemoteException(e.getMessage());

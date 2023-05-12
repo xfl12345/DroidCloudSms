@@ -2,33 +2,16 @@ package cc.xfl12345.android.droidcloudsms.model;
 
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.telephony.SmsManager;
 
 import androidx.annotation.Nullable;
 
-import net.bytebuddy.ByteBuddy;
-import net.bytebuddy.NamingStrategy;
-import net.bytebuddy.description.annotation.AnnotationDescription;
-import net.bytebuddy.description.method.MethodDescription;
-import net.bytebuddy.description.type.TypeDescription;
-import net.bytebuddy.dynamic.DynamicType;
-import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
-import net.bytebuddy.implementation.FixedValue;
-import net.bytebuddy.implementation.MethodCall;
-import net.bytebuddy.jar.asm.Opcodes;
-import net.bytebuddy.matcher.ElementMatcher;
-import net.bytebuddy.matcher.ElementMatchers;
-
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
@@ -85,7 +68,6 @@ public class SystemServiceBinderHelper {
         }
     }
 
-    // @SuppressWarnings("unchecked")
     public SystemServiceBinderHelper(String serviceName) throws ReflectiveOperationException, RemoteException {
         this.serviceName = serviceName;
 
@@ -103,44 +85,6 @@ public class SystemServiceBinderHelper {
         addMethods2Map(serviceClass, serviceClassDeclaredMethods, serviceClassConstructors);
 
         asInterfaceMethod = getServiceStubDeclaredMethod("asInterface", IBinder.class);
-        // serviceInstance = asInterfaceMethod.invoke(null, shizukuBinderWrapper);
-
-        // DynamicType.Unloaded<?> dynamicType = (DynamicType.Unloaded<?>) new ByteBuddy()
-        //     .with(new NamingStrategy.AbstractBase() {
-        //         protected String name(TypeDescription superClass) {
-        //             return "cc.xfl12345.android.droidcloudsms.model.ISmsDynamicImpl";
-        //         }
-        //     })
-        //     .subclass(TestISms.class)
-        //     .modifiers(Opcodes.ACC_PUBLIC)
-        //     .method(ElementMatchers.isDeclaredBy(TestISms.class).and(new ElementMatcher<MethodDescription>() {
-        //         @Override
-        //         public boolean matches(MethodDescription target) {
-        //             // Method method = getServiceDeclaredMethod(
-        //             //     target.getName(),
-        //             //     target.getParameters().asTypeList().stream().map(TypeDescription.Generic::asRawType).toArray(Class[]::new)
-        //             // );
-        //             // return method != null;
-        //             return target.getName().equals("getPreferredSmsSubscription");
-        //
-        //         }
-        //     }))
-        //     .intercept(MethodCall.call(new Callable<Integer>() {
-        //         @Override
-        //         public Integer call() throws Exception {
-        //             return (Integer) executeServiceDeclaredMethod("getPreferredSmsSubscription");
-        //         }
-        //     }))
-        //     .make();
-        // Class<?> mapperClass = (Class<?>) dynamicType
-        //     .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER_PERSISTENT)
-        //     .getLoaded();
-        // try {
-        //     dynamicType.close();
-        //     mapperClass.getDeclaredConstructor().newInstance();
-        // } catch (IOException e) {
-        //     throw new RuntimeException(e);
-        // }
     }
 
     protected void addMethods2Map(
