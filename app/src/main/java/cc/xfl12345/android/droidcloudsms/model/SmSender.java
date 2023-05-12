@@ -1,11 +1,13 @@
 package cc.xfl12345.android.droidcloudsms.model;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.RemoteException;
 
 public class SmSender {
@@ -50,9 +52,10 @@ public class SmSender {
         smsManager.sendTextMessage(phoneNumber, null, content, sentPI, null);
     }
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private void registerReceiver() {
         IntentFilter filter = new IntentFilter(SmSender.SENT_SMS_ACTION);
-        context.registerReceiver(new BroadcastReceiver() {
+        BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int sequence = intent.getIntExtra("sequence", -1);
@@ -67,6 +70,12 @@ public class SmSender {
                 // case SmsManager.RESULT_ERROR_RADIO_OFF:
                 // case SmsManager.RESULT_ERROR_NULL_PDU:
             }
-        }, filter);
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(broadcastReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            context.registerReceiver(broadcastReceiver, filter);
+        }
     }
 }

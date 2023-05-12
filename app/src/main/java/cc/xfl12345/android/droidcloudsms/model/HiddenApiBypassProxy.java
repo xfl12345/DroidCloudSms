@@ -83,6 +83,27 @@ public class HiddenApiBypassProxy {
         return result;
     }
 
+    public static boolean isMatch(Class<?>[] firstArray, Class<?>[] secondArray) {
+        boolean result = false;
+        if (firstArray.length == secondArray.length) {
+            result = true;
+            for (int i = 0; i < firstArray.length; i++) {
+                Class<?> firstClass = firstArray[i];
+                firstClass = typeDic.getOrDefault(firstClass.getName(), firstClass);
+
+                Class<?> secondClass  = secondArray[i];
+                secondClass = typeDic.getOrDefault(secondClass.getName(), secondClass);
+
+                if (!Objects.equals(firstClass, secondClass)) {
+                    result = false;
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
     public static Method getDeclaredMethod(@NonNull Class<?> clazz, @NonNull String methodName, Object... args) throws NoSuchMethodException {
         List<Executable> methods = getDeclaredMethods(clazz);
         for (Executable executable : methods) {

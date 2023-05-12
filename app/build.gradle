@@ -85,6 +85,10 @@ dependencies {
     // https://mvnrepository.com/artifact/org.lsposed.hiddenapibypass/hiddenapibypass
     implementation group: 'org.lsposed.hiddenapibypass', name: 'hiddenapibypass', version: '4.3'
 
+    // Java 字节码框架 Byte Buddy
+    // https://mvnrepository.com/artifact/net.bytebuddy/byte-buddy
+    implementation group: 'net.bytebuddy', name: 'byte-buddy', version: '1.14.4'
+
     // JSON support
     // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.5'
@@ -97,5 +101,7 @@ dependencies {
 
     // https://github.com/iielse/switchbutton
     implementation 'com.github.iielse:switchbutton:1.0.4'
+
+
 
 }

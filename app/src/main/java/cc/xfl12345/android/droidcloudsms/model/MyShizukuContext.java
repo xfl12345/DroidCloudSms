@@ -16,28 +16,38 @@ public class MyShizukuContext implements
 
     private final Context context;
 
-    private IdGenerator idGenerator = new IdGenerator(0);
-
     private volatile boolean granted = false;
-
-    private Map<String, SynchronizeLock> synchronizeLocks = new ConcurrentHashMap<>();
 
     public boolean isGranted() {
         return granted;
     }
 
+    private volatile boolean shizukuServiceConnected = false;
+
+    public boolean isShizukuServiceConnected() {
+        return shizukuServiceConnected;
+    }
+
+    private final IdGenerator idGenerator = new IdGenerator(0);
+
+    private final Map<String, SynchronizeLock> synchronizeLocks = new ConcurrentHashMap<>();
+
+
     public MyShizukuContext(Context context) {
         this.context = context;
+        Shizuku.addBinderReceivedListener(this);
+        Shizuku.addBinderDeadListener(this);
     }
+
 
     @Override
     public void onBinderDead() {
-
+        shizukuServiceConnected = false;
     }
 
     @Override
     public void onBinderReceived() {
-
+        shizukuServiceConnected = true;
     }
 
     @Override
