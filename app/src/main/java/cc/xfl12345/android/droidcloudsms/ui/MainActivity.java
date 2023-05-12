@@ -19,7 +19,10 @@ import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
 import cc.xfl12345.android.droidcloudsms.databinding.ActivityMainBinding;
 
@@ -55,25 +58,11 @@ public class MainActivity extends AppCompatActivity {
         floatingActionButton.setOnClickListener((view) -> binding.drawerLayout.open());
 
 
-        XXPermissions.with(this)
-            .permission(Permission.NOTIFICATION_SERVICE)
-            .permission(Permission.POST_NOTIFICATIONS)
-            // .permission(Permission.ACCESS_NOTIFICATION_POLICY)
-            // .permission(Permission.BIND_NOTIFICATION_LISTENER_SERVICE)
-            // 设置权限请求拦截器（局部设置）
-            //.interceptor(new PermissionInterceptor())
-            // 设置不触发错误检测机制（局部设置）
-            //.unchecked()
-            .request(new OnPermissionCallback() {
-
-                @Override
-                public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
-                }
-
-                @Override
-                public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
-                }
-            });
+        if (!((MyApplication) getApplication()).isAllPermissionGranted()) {
+            Bundle bundle = new Bundle();
+            bundle.putBoolean("needJumpBackWelcomePage", true);
+            navController.navigate(R.id.nav_android_permission_manager, bundle);
+        }
     }
 
     @Override

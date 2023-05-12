@@ -1,7 +1,6 @@
 package cc.xfl12345.android.droidcloudsms.ui;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,10 +13,9 @@ import com.github.iielse.switchbutton.SwitchView;
 import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.XXPermissions;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 import cc.xfl12345.android.droidcloudsms.R;
 
@@ -26,6 +24,12 @@ public class AndroidPermissionListAdapter extends BaseAdapter {
     private Context context;
 
     private List<Map.Entry<String, String>> dataList;
+
+    private BiConsumer<String, Boolean> afterButtonClicked = (permissionName, granted) -> {};
+
+    public void setAfterButtonClickedListener(BiConsumer<String, Boolean> afterButtonClicked) {
+        this.afterButtonClicked = afterButtonClicked;
+    }
 
     public AndroidPermissionListAdapter(Context context, List<Map.Entry<String, String>> dataList) {
         this.context = context;
@@ -96,11 +100,13 @@ public class AndroidPermissionListAdapter extends BaseAdapter {
                 @Override
                 public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                     ((SwitchView) view).toggleSwitch(true);
+                    afterButtonClicked.accept(permissionName, true);
                 }
 
                 @Override
                 public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
                     ((SwitchView) view).toggleSwitch(false);
+                    afterButtonClicked.accept(permissionName, false);
                 }
             });
     }

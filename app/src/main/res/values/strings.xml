@@ -26,9 +26,8 @@
     <string name="previous">Previous</string>
 
 
-
-
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="accessibility_description_test_activity_send_sms_button">send SMS button</string>
+    <string name="permission_request_origin">务必开启以下所有权限，确保APP后台持续存活。</string>
 
 </resources>

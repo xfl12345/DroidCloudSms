@@ -10,7 +10,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -18,6 +17,14 @@ import android.os.IBinder;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+
+import com.hjq.permissions.Permission;
+import com.hjq.permissions.XXPermissions;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.MyActivityManager;
@@ -35,10 +42,17 @@ public class MyApplication extends Application {
 
     private NotificationManager notificationManager;
 
+    public static List<Map.Entry<String, String>> permissionlist = new ArrayList<>();
+
     @Override
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
+
+        permissionlist = new ArrayList<>(3);
+        permissionlist.add(Map.entry(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
+        permissionlist.add(Map.entry(Permission.POST_NOTIFICATIONS, "发送通知权限"));
+        permissionlist.add(Map.entry(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化选项权限"));
 
         // 注册通用通知回调
         NotificationUtils.registerReceiver(context);
@@ -147,5 +161,9 @@ public class MyApplication extends Application {
     private void recreateStaleNotification() {
         notificationManager.cancel(STALE_NOTIFICATION_ID);
         createStaleNotification();
+    }
+
+    public boolean isAllPermissionGranted() {
+        return XXPermissions.isGranted(context, MyApplication.permissionlist.stream().map(Map.Entry::getKey).collect(Collectors.toList()));
     }
 }
