@@ -9,9 +9,9 @@
             android:icon="@drawable/ic_launcher_foreground"
             android:title="@string/nav_label_welcome" />
         <item
-            android:id="@+id/nav_android_permission_manager"
+            android:id="@+id/nav_permission_manager"
             android:icon="@drawable/ic_launcher_foreground"
-            android:title="@string/nav_label_android_permission_manager" />
+            android:title="@string/nav_label_permission_manager" />
         <item
             android:id="@+id/nav_status"
             android:icon="@drawable/ic_launcher_foreground"

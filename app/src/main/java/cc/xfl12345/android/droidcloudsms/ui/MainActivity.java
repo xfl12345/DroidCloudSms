@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         mAppBarConfiguration = new AppBarConfiguration.Builder(
             R.id.nav_welcome,
             R.id.nav_status,
-            R.id.nav_android_permission_manager,
+            R.id.nav_permission_manager,
             R.id.nav_test
         )
         .setOpenableLayout(drawerLayout)
@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
         if (!((MyApplication) getApplication()).isAllPermissionGranted()) {
             Bundle bundle = new Bundle();
             bundle.putBoolean("needJumpBackWelcomePage", true);
-            navController.navigate(R.id.nav_android_permission_manager, bundle);
+            navController.navigate(R.id.nav_permission_manager, bundle);
         }
     }
 

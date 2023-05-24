@@ -8,22 +8,21 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.github.iielse.switchbutton.SwitchView;
-import com.hjq.permissions.OnPermissionCallback;
-import com.hjq.permissions.XXPermissions;
 
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiConsumer;
 
 import cc.xfl12345.android.droidcloudsms.R;
+import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
 
-public class AndroidPermissionListAdapter extends BaseAdapter {
+public class PermissionListAdapter extends BaseAdapter {
 
     private Context context;
 
-    private List<Map.Entry<String, String>> dataList;
+    private List<PermissionItem> dataList;
 
     private BiConsumer<String, Boolean> afterButtonClicked = (permissionName, granted) -> {};
 
@@ -31,7 +30,7 @@ public class AndroidPermissionListAdapter extends BaseAdapter {
         this.afterButtonClicked = afterButtonClicked;
     }
 
-    public AndroidPermissionListAdapter(Context context, List<Map.Entry<String, String>> dataList) {
+    public PermissionListAdapter(Context context, List<PermissionItem> dataList) {
         this.context = context;
         this.dataList = dataList;
     }
@@ -55,66 +54,55 @@ public class AndroidPermissionListAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        Map.Entry<String, String> dataItem = dataList.get(position);
-        String permissionName = dataItem.getKey();
-        String displayName = dataItem.getValue();
+        PermissionItem dataItem = dataList.get(position);
+        String permissionName = dataItem.getCodeName();
+        String displayName = dataItem.getDisplayName();
 
         if(convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.android_permission_item, null);
+            convertView = LayoutInflater.from(context).inflate(R.layout.permission_item, null);
         }
+
 
         TextView textView = convertView.findViewById(R.id.permissionName);
         textView.setText(displayName);
 
         SwitchView switchButton = convertView.findViewById(R.id.permissionSwitchButton);
-        switchButton.setOpened(isGranted(permissionName));
+        switchButton.setOpened(dataItem.isGranted());
         switchButton.setEnabled(true);
         switchButton.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(@NonNull View view) {
                 SwitchView button = (SwitchView) view;
-                button.setOpened(isGranted(permissionName));
+                button.setOpened(dataItem.isGranted());
             }
 
             @Override
             public void onViewDetachedFromWindow(@NonNull View v) {}
         });
 
+        dataItem.setRequestPermissionCallback((beforeRequestStatus, afterRequestStatus, targetStatus) -> {
+            switchButton.toggleSwitch(afterRequestStatus);
+            afterButtonClicked.accept(permissionName, afterRequestStatus);
+        });
+
         switchButton.setOnStateChangedListener(new SwitchView.OnStateChangedListener() {
             @Override
             public void toggleToOn(SwitchView view) {
-                beforeSwitchStateChanged(permissionName, view.isOpened(), view);
+                dataItem.requestPermission(view.isOpened(), true);
             }
 
             @Override
             public void toggleToOff(SwitchView view) {
-                beforeSwitchStateChanged(permissionName, view.isOpened(), view);
+                dataItem.requestPermission(view.isOpened(), false);
             }
         });
 
+        // ConstraintLayout layout = convertView.findViewById(R.id.item_container);
+        // layout.setOnClickListener(v -> {
+        //     v.findViewById(R.id.permissionSwitchButton).performClick();
+        // });
+
         return convertView;
-    }
-
-    protected void beforeSwitchStateChanged(String permissionName, boolean isChecked, View view) {
-        XXPermissions.with(context)
-            .permission(permissionName)
-            .request(new OnPermissionCallback() {
-                @Override
-                public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
-                    ((SwitchView) view).toggleSwitch(true);
-                    afterButtonClicked.accept(permissionName, true);
-                }
-
-                @Override
-                public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
-                    ((SwitchView) view).toggleSwitch(false);
-                    afterButtonClicked.accept(permissionName, false);
-                }
-            });
-    }
-
-    protected boolean isGranted(String permission) {
-        return XXPermissions.isGranted(context, permission);
     }
 
 }

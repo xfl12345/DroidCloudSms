@@ -86,8 +86,11 @@ dependencies {
     implementation group: 'org.lsposed.hiddenapibypass', name: 'hiddenapibypass', version: '4.3'
 
     // JSON support
-    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.5'
+    // // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
+    // implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.5'
+    // https://mvnrepository.com/artifact/com.google.code.gson/gson
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.10.1'
+
 
     // 权限请求框架：https://github.com/getActivity/XXPermissions
     implementation 'com.github.getActivity:XXPermissions:18.0'
@@ -97,6 +100,13 @@ dependencies {
 
     // https://github.com/iielse/switchbutton
     implementation 'com.github.iielse:switchbutton:1.0.4'
+
+    // https://github.com/Gnepux/WebSocketGo
+    implementation 'com.gnepux:wsgo:1.0.2'
+    // // use okhttp
+    // implementation 'com.gnepux:wsgo-okwebsocket:1.0.1'
+    // use java websocket
+    implementation 'com.gnepux:wsgo-jwebsocket:1.0.1'
 
 
 
