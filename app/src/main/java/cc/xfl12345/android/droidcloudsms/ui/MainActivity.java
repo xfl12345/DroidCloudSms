@@ -65,11 +65,13 @@ public class MainActivity extends AppCompatActivity {
 
 
         // 如果未全部授权，则转跳至授权管理器界面
-        if (!((MyApplication) getApplication()).isAllPermissionGranted()) {
-            Bundle bundle = new Bundle();
-            bundle.putBoolean("needJumpBackWelcomePage", true);
-            navController.navigate(R.id.nav_permission_manager, bundle);
-        }
+        new Thread(() -> {
+            if (!((MyApplication) getApplication()).isAllPermissionGranted()) {
+                Bundle bundle = new Bundle();
+                bundle.putBoolean("needJumpBack", true);
+                drawerLayout.post(() -> navController.navigate(R.id.nav_permission_manager, bundle));
+            }
+        }).start();
     }
 
     @Override

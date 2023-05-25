@@ -19,8 +19,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
+
+import org.teasoft.bee.android.CreateAndUpgradeRegistry;
+import org.teasoft.beex.android.ApplicationRegistry;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -29,12 +33,18 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
+import cc.xfl12345.android.droidcloudsms.model.BeeCreateAndUpgrade;
 import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
+import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
 import cc.xfl12345.android.droidcloudsms.model.SmSender;
 
 public class MyApplication extends Application {
     public static final int STALE_NOTIFICATION_ID = 0;
+
+    public static final String SP_KEY_APP_CONFIG = "AppConfig";
+
+    public static final String SP_KEY_WEBSOCKET_SERVER_URL = "websocketServerURL";
 
     private Context context;
 
@@ -65,22 +75,32 @@ public class MyApplication extends Application {
 
     private NotificationManager notificationManager;
 
-    public static List<Map.Entry<String, String>> permissionlist = new ArrayList<>();
+    public static List<Map.Entry<String, String>> androidPermissionList = new ArrayList<>();
+
+    public static List<PermissionItem> permissionList;
 
     private Intent foregroundServiceIntent;
 
     private ServiceConnection foregroundServiceConnection;
 
+    private boolean isBindForegroundService = false;
+
+    private Boolean isExiting = false;
+
     @Override
     public void onCreate() {
         super.onCreate();
-        context = getApplicationContext();
+        context = this;
         myShizukuContext = new MyShizukuContext(context);
 
-        permissionlist = new ArrayList<>(3);
-        permissionlist.add(Map.entry(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
-        permissionlist.add(Map.entry(Permission.POST_NOTIFICATIONS, "发送通知权限"));
-        permissionlist.add(Map.entry(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化选项权限"));
+        androidPermissionList = new ArrayList<>(10);
+        androidPermissionList.add(Map.entry("android.permission.INTERNET", "联网权限"));
+        androidPermissionList.add(Map.entry("android.permission.VIBRATE", "震动权限"));
+        androidPermissionList.add(Map.entry("android.permission.FOREGROUND_SERVICE", "前台服务权限"));
+        androidPermissionList.add(Map.entry(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
+        androidPermissionList.add(Map.entry(Permission.POST_NOTIFICATIONS, "发送通知权限"));
+        androidPermissionList.add(Map.entry(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化权限"));
+        initPermissionList();
 
         // 注册通用通知回调
         NotificationUtils.registerReceiver(context);
@@ -134,8 +154,11 @@ public class MyApplication extends Application {
             }
         });
 
+        ApplicationRegistry.register(this);//注册上下文
+        CreateAndUpgradeRegistry.register(BeeCreateAndUpgrade.class);
+
         // 吊起前台保活服务
-        foregroundServiceIntent = new Intent().setClass(getApplicationContext(), ForegroundService.class);
+        foregroundServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);
         foregroundServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
@@ -145,7 +168,7 @@ public class MyApplication extends Application {
             public void onServiceDisconnected(ComponentName name) {
             }
         };
-        bindService(foregroundServiceIntent, foregroundServiceConnection, Context.BIND_IMPORTANT);
+        isBindForegroundService = bindService(foregroundServiceIntent, foregroundServiceConnection, Context.BIND_IMPORTANT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(foregroundServiceIntent);
         } else {
@@ -160,10 +183,17 @@ public class MyApplication extends Application {
 
     @Override
     public void onTerminate() {
+        synchronized (SP_KEY_APP_CONFIG) {
+            if (!isExiting) {
+                isExiting = true;
+                if (isBindForegroundService) {
+                    unbindService(foregroundServiceConnection);
+                    stopService(foregroundServiceIntent);
+                }
+            }
+        }
         notificationManager.cancel(STALE_NOTIFICATION_ID);
         MyActivityManager.finishAllActivity();
-        unbindService(foregroundServiceConnection);
-        stopService(foregroundServiceIntent);
         super.onTerminate();
     }
 
@@ -199,8 +229,107 @@ public class MyApplication extends Application {
         createStaleNotification();
     }
 
+    private void initPermissionList() {
+        permissionList = new ArrayList<>(MyApplication.androidPermissionList.size() + 2);
+        // 添加 Shizuku 权限选项
+        permissionList.add(new PermissionItem() {
+            @Override
+            public String getDisplayName() {
+                return "Shizuku";
+            }
+
+            @Override
+            public String getCodeName() {
+                return "Shizuku";
+            }
+
+            @Override
+            public boolean isGranted() {
+                return myShizukuContext.isGranted();
+            }
+
+            @Override
+            public void requestPermission(boolean beforeRequestStatus, boolean targetStatus) {
+                if (targetStatus) {
+                    getRequestPermissionCallback().callback(
+                        beforeRequestStatus,
+                        myShizukuContext.requirePermission(),
+                        targetStatus
+                    );
+                } else {
+                    // 暂时还不支持撤销授权，这种操作
+                    getRequestPermissionCallback().callback(
+                        beforeRequestStatus,
+                        isGranted(),
+                        targetStatus
+                    );
+                }
+            }
+        });
+        // 添加 安卓权限选项
+        androidPermissionList.forEach(entry -> permissionList.add(new PermissionItem() {
+            @Override
+            public String getDisplayName() {
+                return entry.getValue();
+            }
+
+            @Override
+            public String getCodeName() {
+                return entry.getKey();
+            }
+
+            @Override
+            public void requestPermission(boolean beforeRequestStatus, boolean targetStatus) {
+                if (targetStatus) {
+                    XXPermissions.with(context)
+                        .permission(getCodeName())
+                        .request(new OnPermissionCallback() {
+                            @Override
+                            public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
+                                getRequestPermissionCallback().callback(
+                                    beforeRequestStatus,
+                                    true,
+                                    targetStatus
+                                );
+                            }
+
+                            @Override
+                            public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
+                                getRequestPermissionCallback().callback(
+                                    beforeRequestStatus,
+                                    false,
+                                    targetStatus
+                                );
+                            }
+                        });
+                } else {
+                    // 暂时还不支持撤销授权，这种操作
+                    getRequestPermissionCallback().callback(
+                        beforeRequestStatus,
+                        isGranted(),
+                        targetStatus
+                    );
+                }
+            }
+
+            @Override
+            public boolean isGranted() {
+                return XXPermissions.isGranted(context, getCodeName());
+            }
+        }));
+    }
+
     public boolean isAllPermissionGranted() {
-        return XXPermissions.isGranted(context, MyApplication.permissionlist.stream().map(Map.Entry::getKey).collect(Collectors.toList()));
+        boolean isAllGranted = true;
+        // 遍历检查全部权限情况
+        for (PermissionItem item : permissionList) {
+            if (!item.isGranted()) {
+                isAllGranted = false;
+                break;
+            }
+        }
+
+        return isAllGranted;
     }
 
     public static Activity getCurrentActivity() {

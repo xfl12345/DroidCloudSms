@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import rikka.shizuku.Shizuku;
 
@@ -102,10 +103,11 @@ public class MyShizukuContext implements
                 synchronizeLocks.remove(requestCodeString);
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            } finally {
+                Shizuku.removeRequestPermissionResultListener(this);
             }
 
             result = granted;
-            Shizuku.removeRequestPermissionResultListener(this);
         } else {
             NotificationUtils.postNotification(context, "Shizuku", "Shizuku 拒绝授权并且不再询问");
         }

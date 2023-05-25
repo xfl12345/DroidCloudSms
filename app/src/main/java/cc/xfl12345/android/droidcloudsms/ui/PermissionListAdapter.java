@@ -81,25 +81,33 @@ public class PermissionListAdapter extends BaseAdapter {
         });
 
         dataItem.setRequestPermissionCallback((beforeRequestStatus, afterRequestStatus, targetStatus) -> {
-            switchButton.toggleSwitch(afterRequestStatus);
-            afterButtonClicked.accept(permissionName, afterRequestStatus);
+            switchButton.post(() -> {
+                switchButton.toggleSwitch(afterRequestStatus);
+                afterButtonClicked.accept(permissionName, afterRequestStatus);
+            });
         });
 
         switchButton.setOnStateChangedListener(new SwitchView.OnStateChangedListener() {
             @Override
             public void toggleToOn(SwitchView view) {
-                dataItem.requestPermission(view.isOpened(), true);
+                new Thread(() -> {
+                    dataItem.requestPermission(view.isOpened(), true);
+                }).start();
             }
 
             @Override
             public void toggleToOff(SwitchView view) {
-                dataItem.requestPermission(view.isOpened(), false);
+                new Thread(() -> {
+                    dataItem.requestPermission(view.isOpened(), false);
+                }).start();
             }
         });
 
         // ConstraintLayout layout = convertView.findViewById(R.id.item_container);
         // layout.setOnClickListener(v -> {
-        //     v.findViewById(R.id.permissionSwitchButton).performClick();
+        //     new Thread(()-> {
+        //         layout.post(() -> v.findViewById(R.id.permissionSwitchButton).performClick());
+        //     }).start();
         // });
 
         return convertView;

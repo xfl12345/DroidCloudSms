@@ -14,6 +14,12 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // ndk {
+        //     //选择要添加的对应 cpu 类型的 .so 库。
+        //     abiFilters 'armeabi', 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        //     // 还可以添加 'mips', 'mips64'
+        // }
     }
 
     buildTypes {
@@ -108,6 +114,18 @@ dependencies {
     // use java websocket
     implementation 'com.gnepux:wsgo-jwebsocket:1.0.1'
 
+
+    String beeOrmVersion = '1.17'
+
+    // 中国国产 Java ORM 框架 bee
+    // https://mvnrepository.com/artifact/org.teasoft/bee
+    implementation group: 'org.teasoft', name: 'bee', version: beeOrmVersion
+
+    // https://mvnrepository.com/artifact/org.teasoft/honey
+    implementation group: 'org.teasoft', name: 'honey', version: beeOrmVersion
+
+    // https://mvnrepository.com/artifact/org.teasoft/bee-ext
+    implementation group: 'org.teasoft', name: 'bee-ext', version: beeOrmVersion
 
 
 }
