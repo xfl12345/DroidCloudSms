@@ -57,11 +57,25 @@ public class MyApplication extends Application {
 
     public static List<PermissionItem> permissionList;
 
-    private Intent foregroundServiceIntent;
+    private Intent websocketServiceIntent;
 
-    private ServiceConnection foregroundServiceConnection;
+    private ServiceConnection websocketServiceConnection;
 
-    private boolean isBindForegroundService = false;
+    private boolean boundWebsocketService = false;
+
+    private boolean connected2WebsocketService = false;
+
+    public boolean isConnected2WebsocketService() {
+        return connected2WebsocketService;
+    }
+
+    private WebsocketService.WebsocketServiceBinder binder;
+
+    private WebsocketService websocketService = null;
+
+    public WebsocketService getWebsocketService() {
+        return websocketService;
+    }
 
     private Boolean isExiting = false;
 
@@ -136,21 +150,25 @@ public class MyApplication extends Application {
         CreateAndUpgradeRegistry.register(BeeCreateAndUpgrade.class);
 
         // 吊起前台保活服务
-        foregroundServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);
-        foregroundServiceConnection = new ServiceConnection() {
+        websocketServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);
+        websocketServiceConnection = new ServiceConnection() {
             @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
+            public void onServiceConnected(ComponentName name, IBinder iBinder) {
+                connected2WebsocketService = true;
+                binder = (WebsocketService.WebsocketServiceBinder) iBinder;
+                websocketService = binder.getService();
             }
 
             @Override
             public void onServiceDisconnected(ComponentName name) {
+                connected2WebsocketService = false;
             }
         };
-        isBindForegroundService = bindService(foregroundServiceIntent, foregroundServiceConnection, Context.BIND_IMPORTANT);
+        boundWebsocketService = bindService(websocketServiceIntent, websocketServiceConnection, Context.BIND_AUTO_CREATE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(foregroundServiceIntent);
+            startForegroundService(websocketServiceIntent);
         } else {
-            startService(foregroundServiceIntent);
+            startService(websocketServiceIntent);
         }
     }
 
@@ -164,9 +182,9 @@ public class MyApplication extends Application {
         synchronized (SP_KEY_APP_CONFIG) {
             if (!isExiting) {
                 isExiting = true;
-                if (isBindForegroundService) {
-                    unbindService(foregroundServiceConnection);
-                    stopService(foregroundServiceIntent);
+                if (boundWebsocketService) {
+                    unbindService(websocketServiceConnection);
+                    stopService(websocketServiceIntent);
                 }
             }
         }
