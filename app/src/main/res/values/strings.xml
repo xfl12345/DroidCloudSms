@@ -31,6 +31,6 @@
     <string name="accessibility_description_test_activity_send_sms_button">send SMS button</string>
     <string name="permission_request_origin">务必开启以下所有权限，确保APP可以正常工作。</string>
     <string name="exit_app">退出APP</string>
-    <string name="shizuku_status">Shizuku状态</string>
+    <string name="sms_status">短信服务状态</string>
 
 </resources>

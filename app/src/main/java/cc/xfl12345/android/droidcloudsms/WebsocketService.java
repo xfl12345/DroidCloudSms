@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
@@ -21,10 +22,11 @@ import java.io.IOException;
 
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.SmSender;
+import rikka.shizuku.Shizuku;
 
 // source code URL=https://blog.csdn.net/yxl930401/article/details/127963284
 // source code URL=https://blog.csdn.net/weixin_35691921/article/details/124419935
-public class WebsocketService extends Service {
+public class WebsocketService extends Service implements Shizuku.OnRequestPermissionResultListener {
     private static final String TAG = "DroidCloudSmsWebSocketService";
 
     public static final String SERVICE_NAME = TAG;
@@ -40,20 +42,11 @@ public class WebsocketService extends Service {
     private SmSender smSender = null;
 
     public SmSender getSmSender() {
-        if (smSender == null) {
-            if (context.getMyShizukuContext().requirePermission()) {
-                try {
-                    smSender = new SmSender(context);
-                } catch (ReflectiveOperationException | RemoteException e) {
-                    NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + e.getMessage());
-                    e.printStackTrace();
-                }
-            } else {
-                NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + "Shizuku 未授权");
-            }
-        }
-
         return smSender;
+    }
+
+    public boolean isSmsReady() {
+        return getSmSender() != null;
     }
 
     public WebsocketService() {
@@ -91,6 +84,8 @@ public class WebsocketService extends Service {
             }
         }
 
+        Shizuku.addRequestPermissionResultListener(this);
+        initSmSender();
         reinitWsGo();
 
         Log.i(TAG, "onCreate...");
@@ -153,6 +148,7 @@ public class WebsocketService extends Service {
         super.onDestroy();
         Log.i(TAG, "onDestroy...");
 
+        Shizuku.removeRequestPermissionResultListener(this);
         try {
             WsGo.getInstance().destroyInstance();
         } catch (Exception e) {
@@ -189,6 +185,27 @@ public class WebsocketService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         return START_NOT_STICKY;
+    }
+
+    private void initSmSender() {
+        if (context.getMyShizukuContext().refreshPermissionStatus()) {
+            try {
+                smSender = new SmSender(context);
+                NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务成功！");
+            } catch (ReflectiveOperationException | RemoteException e) {
+                NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            // NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + "Shizuku 未授权");
+        }
+    }
+
+    @Override
+    public void onRequestPermissionResult(int requestCode, int grantResult) {
+        if (grantResult == PackageManager.PERMISSION_GRANTED) {
+            initSmSender();
+        }
     }
 
 }

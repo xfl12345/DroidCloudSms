@@ -25,6 +25,7 @@ import com.hjq.permissions.XXPermissions;
 import org.teasoft.bee.android.CreateAndUpgradeRegistry;
 import org.teasoft.beex.android.ApplicationRegistry;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,6 +188,12 @@ public class MyApplication extends Application {
                     stopService(websocketServiceIntent);
                 }
             }
+        }
+
+        try {
+            myShizukuContext.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         // 注销通用通知回调

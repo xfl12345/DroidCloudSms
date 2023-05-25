@@ -50,11 +50,11 @@ public class TestFragment extends Fragment {
             smContent.setPhoneNumber(phoneNumber);
 
             new Thread(() -> {
-                if (context.isConnected2WebsocketService()) {
+                if (context.isConnected2WebsocketService() && context.getWebsocketService().isSmsReady()) {
                     SmSender smSender = context.getWebsocketService().getSmSender();
                     smSender.sendMessage(smContent.getContent(), smContent.getPhoneNumber());
                 } else {
-                    NotificationUtils.postNotification(context, "测试发送短信失败", "短信服务未连接");
+                    NotificationUtils.postNotification(context, "测试发送短信失败", "短信服务未工作");
                 }
             }).start();
         });

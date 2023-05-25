@@ -15,6 +15,8 @@ import cc.xfl12345.android.droidcloudsms.databinding.FragmentStatusBinding;
 
 public class StatusFragment extends Fragment {
 
+    private MyApplication context;
+
     public StatusFragment() {
         // Required empty public constructor
     }
@@ -30,10 +32,12 @@ public class StatusFragment extends Fragment {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_status, container, false);
         FragmentStatusBinding binding = FragmentStatusBinding.bind(view);
+        context = ((MyApplication) requireContext().getApplicationContext());
 
-        boolean shizukuGranted = ((MyApplication) requireContext().getApplicationContext()).getMyShizukuContext().isGranted();
-        binding.shizukuStatusMonitor.setText(shizukuGranted ? "已授权" : "未授权");
-        binding.shizukuStatusMonitor.setTextColor(shizukuGranted ? Color.GREEN : Color.RED);
+        boolean smsStandby = context.isConnected2WebsocketService() &&
+            context.getWebsocketService().isSmsReady();
+        binding.smsStatusMonitor.setText(smsStandby ? "正常工作" : "未工作");
+        binding.smsStatusMonitor.setTextColor(smsStandby ? Color.GREEN : Color.RED);
 
         return view;
     }

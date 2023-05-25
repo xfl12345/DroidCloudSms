@@ -3,6 +3,8 @@ package cc.xfl12345.android.droidcloudsms.model;
 import android.content.Context;
 import android.content.pm.PackageManager;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -12,7 +14,8 @@ import rikka.shizuku.Shizuku;
 public class MyShizukuContext implements
         Shizuku.OnBinderDeadListener,
         Shizuku.OnBinderReceivedListener,
-        Shizuku.OnRequestPermissionResultListener {
+        Shizuku.OnRequestPermissionResultListener,
+        Closeable {
     public static final String TAG = "shizuku";
 
     private final Context context;
@@ -41,7 +44,6 @@ public class MyShizukuContext implements
         Shizuku.addBinderDeadListener(this);
     }
 
-
     @Override
     public void onBinderDead() {
         shizukuServiceConnected = false;
@@ -55,7 +57,7 @@ public class MyShizukuContext implements
     @Override
     public void onRequestPermissionResult(int requestCode, int grantResult) {
         granted = grantResult == PackageManager.PERMISSION_GRANTED;
-        NotificationUtils.postNotification(context, "Shizuku", granted ? "已获得 Shizuku 授权" : "Shizuku 拒绝授权");
+        // NotificationUtils.postNotification(context, "Shizuku", granted ? "已获得 Shizuku 授权" : "Shizuku 拒绝授权");
         try {
             String requestCodeString = "" + requestCode;
             SynchronizeLock lock = synchronizeLocks.putIfAbsent(requestCodeString, createSynLock());
@@ -122,5 +124,11 @@ public class MyShizukuContext implements
 
         granted = result;
         return result;
+    }
+
+    @Override
+    public void close() throws IOException {
+        Shizuku.removeBinderReceivedListener(this);
+        Shizuku.removeBinderDeadListener(this);
     }
 }
