@@ -16,7 +16,7 @@ import java.io.IOException;
 public class SmSender implements Closeable {
     public static final String NOTIFICATION_TITLE = "短信服务";
 
-    public static final String SENT_SMS_ACTION = "cc.xfl12345.android.xposed.mysmssender.action.SENT_SMS_ACTION";
+    public static final String SENT_SMS_ACTION = "cc.xfl12345.android.droidcloudsms.action.SENT_SMS_ACTION";
 
     protected int sequence = 1;
 
@@ -52,6 +52,8 @@ public class SmSender implements Closeable {
             sequence += 1;
         }
         sentIntent.putExtra("sequence", currentSequence);
+        sentIntent.putExtra("phoneNumber", phoneNumber);
+        sentIntent.putExtra("content", content);
         PendingIntent sentPI = PendingIntent.getBroadcast(context, currentSequence, sentIntent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
         smsManager.sendTextMessage(phoneNumber, null, content, sentPI, null);
@@ -64,13 +66,14 @@ public class SmSender implements Closeable {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int sequence = intent.getIntExtra("sequence", -1);
-                NotificationUtils.postNotification(
-                    context,
-                    NOTIFICATION_TITLE,
-                    getResultCode() == Activity.RESULT_OK ?
-                        "第" + sequence + "条 发送成功" :
-                        "第" + sequence + "条 发送失败，状态码：" + getResultCode()
-                );
+                String phoneNumber = intent.getStringExtra("phoneNumber");
+                String smsContent = intent.getStringExtra("content");
+
+                String notificationContent = (getResultCode() == Activity.RESULT_OK ?
+                    "第" + sequence + "条 发送成功！" :
+                    "第" + sequence + "条 发送失败，状态码：[" + getResultCode() + "]，" ) +
+                    "收件人：" + phoneNumber + ", 内容：[" + smsContent + "]";
+                NotificationUtils.postNotification(context, NOTIFICATION_TITLE, notificationContent);
                 // case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
                 // case SmsManager.RESULT_ERROR_RADIO_OFF:
                 // case SmsManager.RESULT_ERROR_NULL_PDU:
