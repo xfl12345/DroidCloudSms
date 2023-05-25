@@ -46,7 +46,9 @@ public class MainActivity extends AppCompatActivity {
 
         // 为 安全退出APP的按钮 实现功能
         binding.navViewFooterBoxButtonExitApp.setOnClickListener((view) -> {
-            ((MyApplication) getApplicationContext()).justExit();
+            new Thread(() -> {
+                ((MyApplication) getApplicationContext()).justExit();
+            }).start();
         });
 
         mAppBarConfiguration = new AppBarConfiguration.Builder(

@@ -13,7 +13,6 @@ import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.RemoteException;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,13 +30,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 
 import cc.xfl12345.android.droidcloudsms.model.BeeCreateAndUpgrade;
 import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
-import cc.xfl12345.android.droidcloudsms.model.SmSender;
 
 public class MyApplication extends Application {
     public static final int STALE_NOTIFICATION_ID = 0;
@@ -52,25 +49,6 @@ public class MyApplication extends Application {
 
     public MyShizukuContext getMyShizukuContext() {
         return myShizukuContext;
-    }
-
-    private SmSender smSender = null;
-
-    public SmSender getSmSender() {
-        if (smSender == null) {
-            if (myShizukuContext.requirePermission()) {
-                try {
-                    smSender = new SmSender(context);
-                } catch (ReflectiveOperationException | RemoteException e) {
-                    NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + e.getMessage());
-                    e.printStackTrace();
-                }
-            } else {
-                NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, "创建短信服务失败！原因：" + "Shizuku 未授权");
-            }
-        }
-
-        return smSender;
     }
 
     private NotificationManager notificationManager;
@@ -192,6 +170,9 @@ public class MyApplication extends Application {
                 }
             }
         }
+
+        // 注销通用通知回调
+        NotificationUtils.unregisterReceiver(context);
         notificationManager.cancel(STALE_NOTIFICATION_ID);
         MyActivityManager.finishAllActivity();
         super.onTerminate();

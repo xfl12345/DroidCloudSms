@@ -26,6 +26,8 @@ public class NotificationUtils {
 
     private static final IdGenerator notificationIdGenerator = new IdGenerator(1);
 
+    private static BroadcastReceiver broadcastReceiver;
+
     public static NotificationManager getNotificationManager(Context context) {
         return ((NotificationManager) context.getSystemService(NOTIFICATION_SERVICE));
     }
@@ -58,7 +60,7 @@ public class NotificationUtils {
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     public static void registerReceiver(Context context) {
         IntentFilter filter = new IntentFilter(NotificationUtils.CLEAR_COMMON_NOTIFICATION_ACTION);
-        BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int sequence = intent.getIntExtra("sequence", -1);
@@ -74,4 +76,9 @@ public class NotificationUtils {
             context.registerReceiver(broadcastReceiver, filter);
         }
     }
+
+    public static void unregisterReceiver(Context context) {
+        context.unregisterReceiver(broadcastReceiver);
+    }
+
 }

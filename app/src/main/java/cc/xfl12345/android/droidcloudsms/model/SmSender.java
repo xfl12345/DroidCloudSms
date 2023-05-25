@@ -10,16 +10,21 @@ import android.content.IntentFilter;
 import android.os.Build;
 import android.os.RemoteException;
 
-public class SmSender {
+import java.io.Closeable;
+import java.io.IOException;
+
+public class SmSender implements Closeable {
     public static final String NOTIFICATION_TITLE = "短信服务";
 
     public static final String SENT_SMS_ACTION = "cc.xfl12345.android.xposed.mysmssender.action.SENT_SMS_ACTION";
 
-    private int sequence = 1;
+    protected int sequence = 1;
 
-    private final MySmsManager smsManager;
+    protected final MySmsManager smsManager;
 
     protected Context context;
+
+    protected BroadcastReceiver broadcastReceiver;
 
     public MySmsManager getSmsManager() {
         return smsManager;
@@ -53,9 +58,9 @@ public class SmSender {
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    private void registerReceiver() {
+    protected void registerReceiver() {
         IntentFilter filter = new IntentFilter(SmSender.SENT_SMS_ACTION);
-        BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int sequence = intent.getIntExtra("sequence", -1);
@@ -78,4 +83,14 @@ public class SmSender {
             context.registerReceiver(broadcastReceiver, filter);
         }
     }
+
+    protected void unregisterReceiver() {
+        context.unregisterReceiver(broadcastReceiver);
+    }
+
+    @Override
+    public void close() throws IOException {
+        unregisterReceiver();
+    }
+
 }
