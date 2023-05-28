@@ -48,6 +48,9 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
+    // https://mvnrepository.com/artifact/androidx.preference/preference
+    implementation group: 'androidx.preference', name: 'preference', version: '1.2.0'
+
     // // https://mvnrepository.com/artifact/com.google.android.material/material
     // implementation group: 'com.google.android.material', name: 'material', version: '1.9.0'
 
@@ -104,20 +107,47 @@ dependencies {
     // // https://mvnrepository.com/artifact/com.github.zcweng/switch-button
     // implementation group: 'com.github.zcweng', name: 'switch-button', version: '0.0.3'
 
+    // 开关按钮组件
     // https://github.com/iielse/switchbutton
     implementation 'com.github.iielse:switchbutton:1.0.4'
 
-    // https://github.com/Gnepux/WebSocketGo
-    implementation 'com.gnepux:wsgo:1.0.2'
-    // // use okhttp
-    // implementation 'com.gnepux:wsgo-okwebsocket:1.0.1'
-    // use java websocket
-    implementation 'com.gnepux:wsgo-jwebsocket:1.0.1'
+    // // WebSocket 客户端框架 WebSocketGo
+    // // https://github.com/Gnepux/WebSocketGo
+    // implementation 'com.gnepux:wsgo:1.0.2'
+    // // // use okhttp
+    // // implementation 'com.gnepux:wsgo-okwebsocket:1.0.1'
+    // // use java websocket
+    // implementation 'com.gnepux:wsgo-jwebsocket:1.0.1'
+
+    // WebSocket 客户端框架 nv-websocket-client
+    // https://mvnrepository.com/artifact/com.neovisionaries/nv-websocket-client
+    implementation group: 'com.neovisionaries', name: 'nv-websocket-client', version: '2.14'
 
 
-    String beeOrmVersion = '1.17'
+    // HTTP 请求框架 okhttp3
+    String okHttp3Version = '5.0.0-alpha.11'
+    // https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
+    implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: okHttp3Version
+
+    // https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp-dnsoverhttps
+    implementation group: 'com.squareup.okhttp3', name: 'okhttp-dnsoverhttps', version: okHttp3Version
+
+    // https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp-urlconnection
+    implementation group: 'com.squareup.okhttp3', name: 'okhttp-urlconnection', version: okHttp3Version
+
+
+
+    // 中国七牛云 DNS 请求框架 happy dns
+    // https://mvnrepository.com/artifact/com.qiniu/happy-dns
+    implementation group: 'com.qiniu', name: 'happy-dns', version: '2.0.1'
+
+    // 判断 字符串 是 IP地址 还是 域名 的工具库
+    // https://mvnrepository.com/artifact/com.github.seancfoley/ipaddress
+    implementation group: 'com.github.seancfoley', name: 'ipaddress', version: '5.4.0'
+
 
     // 中国国产 Java ORM 框架 bee
+    String beeOrmVersion = '1.17'
     // https://mvnrepository.com/artifact/org.teasoft/bee
     implementation group: 'org.teasoft', name: 'bee', version: beeOrmVersion
 

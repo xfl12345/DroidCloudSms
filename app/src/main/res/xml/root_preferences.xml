@@ -1,0 +1,18 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/setting_header_websocket">
+
+        <EditTextPreference
+            app:key="websocketServerLoginURL"
+            app:title="@string/setting_title_websocket_server_login_url"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="websocketServerAccessKeySecret"
+            app:title="@string/setting_title_websocket_server_access_key_secret"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+
+</PreferenceScreen>

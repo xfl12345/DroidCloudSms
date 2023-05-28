@@ -17,6 +17,11 @@
         tools:layout="@layout/fragment_permission_manager" />
 
     <fragment
+        android:id="@+id/nav_setting"
+        android:name="cc.xfl12345.android.droidcloudsms.ui.SettingsFragment"
+        android:label="@string/nav_label_setting" />
+
+    <fragment
         android:id="@+id/nav_status"
         android:name="cc.xfl12345.android.droidcloudsms.ui.StatusFragment"
         android:label="@string/nav_label_status"

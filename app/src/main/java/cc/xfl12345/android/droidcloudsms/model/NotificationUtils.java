@@ -4,6 +4,7 @@ import static android.content.Context.NOTIFICATION_SERVICE;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -28,7 +29,7 @@ public class NotificationUtils {
 
     private static BroadcastReceiver broadcastReceiver;
 
-    public static NotificationManager getNotificationManager(Context context) {
+    private static NotificationManager getNotificationManager(Context context) {
         return ((NotificationManager) context.getSystemService(NOTIFICATION_SERVICE));
     }
 
@@ -45,7 +46,7 @@ public class NotificationUtils {
             .setContentTitle(title)    //设置标题
             .setContentText(content)    //设置通知文字
             .setSmallIcon(R.drawable.baseline_contact_mail_24)   //设置左边的小图标
-            .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.miyamizu_mitsuha_head))  //设置大图标
+            // .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.miyamizu_mitsuha_head))  //设置大图标
             // .setColor(Color.parseColor("#ff0000"))
             .setContentIntent(pendingIntent)  // 设置点击通知之后 进入相关页面(此处进入NotificationActivity类，执行oncreat方法打印日志)
             .setOngoing(false)
@@ -58,7 +59,20 @@ public class NotificationUtils {
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    public static void registerReceiver(Context context) {
+    public static void registerNotification(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {   // 版本大于等于 安卓8.0
+            NotificationManager notificationManager = getNotificationManager(context);
+            NotificationChannel channel = notificationManager.getNotificationChannel(CHANNEL_ID);
+            if (channel == null) {
+                channel = new NotificationChannel(
+                    NotificationUtils.CHANNEL_ID,
+                    NotificationUtils.CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_DEFAULT
+                );
+                notificationManager.createNotificationChannel(channel);
+            }
+        }
+
         IntentFilter filter = new IntentFilter(NotificationUtils.CLEAR_COMMON_NOTIFICATION_ACTION);
         broadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -77,7 +91,7 @@ public class NotificationUtils {
         }
     }
 
-    public static void unregisterReceiver(Context context) {
+    public static void unregisterNotification(Context context) {
         context.unregisterReceiver(broadcastReceiver);
     }
 

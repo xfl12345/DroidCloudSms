@@ -3,7 +3,6 @@ package cc.xfl12345.android.droidcloudsms;
 import android.app.Activity;
 import android.app.Application;
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ComponentName;
@@ -38,11 +37,11 @@ import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
 
 public class MyApplication extends Application {
-    public static final int STALE_NOTIFICATION_ID = 0;
+    public static final Integer STALE_NOTIFICATION_ID = 0;
 
-    public static final String SP_KEY_APP_CONFIG = "AppConfig";
+    public static final String SP_KEY_WEBSOCKET_SERVER_LOGIN_URL = "websocketServerLoginURL";
 
-    public static final String SP_KEY_WEBSOCKET_SERVER_URL = "websocketServerURL";
+    public static final String SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET = "websocketServerAccessKeySecret";
 
     private Context context;
 
@@ -95,18 +94,9 @@ public class MyApplication extends Application {
         androidPermissionList.add(Map.entry(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化权限"));
         initPermissionList();
 
-        // 注册通用通知回调
-        NotificationUtils.registerReceiver(context);
-
         notificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {   // 版本大于等于 安卓8.0
-            NotificationChannel channel = new NotificationChannel(
-                NotificationUtils.CHANNEL_ID,
-                NotificationUtils.CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            );
-            notificationManager.createNotificationChannel(channel);
-        }
+        // 注册通用通知回调
+        NotificationUtils.registerNotification(context);
 
         createStaleNotification();
 
@@ -147,6 +137,7 @@ public class MyApplication extends Application {
             }
         });
 
+        // 初始化数据库框架
         ApplicationRegistry.register(this);//注册上下文
         CreateAndUpgradeRegistry.register(BeeCreateAndUpgrade.class);
 
@@ -180,7 +171,7 @@ public class MyApplication extends Application {
 
     @Override
     public void onTerminate() {
-        synchronized (SP_KEY_APP_CONFIG) {
+        synchronized (STALE_NOTIFICATION_ID) {
             if (!isExiting) {
                 isExiting = true;
                 if (boundWebsocketService) {
@@ -197,7 +188,7 @@ public class MyApplication extends Application {
         }
 
         // 注销通用通知回调
-        NotificationUtils.unregisterReceiver(context);
+        NotificationUtils.unregisterNotification(context);
         notificationManager.cancel(STALE_NOTIFICATION_ID);
         MyActivityManager.finishAllActivity();
         super.onTerminate();

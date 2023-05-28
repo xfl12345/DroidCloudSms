@@ -2,6 +2,7 @@ package cc.xfl12345.android.droidcloudsms.model;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.widget.Toast;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -111,7 +112,7 @@ public class MyShizukuContext implements
 
             result = granted;
         } else {
-            NotificationUtils.postNotification(context, "Shizuku", "Shizuku 拒绝授权并且不再询问");
+            Toast.makeText(context, "Shizuku 拒绝授权并且不再询问", Toast.LENGTH_SHORT).show();
         }
 
         return result;
