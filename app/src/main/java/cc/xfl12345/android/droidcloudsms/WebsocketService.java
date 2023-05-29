@@ -1,6 +1,5 @@
 package cc.xfl12345.android.droidcloudsms;
 
-import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -19,7 +18,6 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
@@ -43,7 +41,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -58,8 +55,6 @@ import cc.xfl12345.android.droidcloudsms.model.http.response.JsonApiResponseData
 import cc.xfl12345.android.droidcloudsms.model.ws.SmsTaskRequestObject;
 import cc.xfl12345.android.droidcloudsms.model.ws.WebSocketMessage;
 import inet.ipaddr.HostName;
-import okhttp3.Cookie;
-import okhttp3.CookieJar;
 import okhttp3.Dns;
 import okhttp3.FormBody;
 import okhttp3.HttpUrl;
@@ -257,25 +252,30 @@ public class WebsocketService extends Service implements
             String accessKeySecret = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET, "");
             String connectUrlInText = "";
             String ipAddress = "";
+            String hostName = "";
+            List<InetAddress> records = Collections.emptyList();
             URL loginURL = null;
+            URI loginURI = null;
 
             // 尝试登录
             if (!"".equals(loginUrlInText)) {
                 try {
                     HttpUrl okhttpLoginUrl = HttpUrl.get(loginUrlInText);
                     loginURL = new URL(loginUrlInText);
+                    loginURI = loginURL.toURI();
 
-                    HostName hostName = new HostName(loginURL.getHost());
-                    if (hostName.isAddress()) {
-                        ipAddress = hostName.getHost();
+                    // 先开展解析工作
+                    hostName = loginURL.getHost();
+                    HostName tmpHostName = new HostName(hostName);
+                    if (tmpHostName.isAddress()) {
+                        ipAddress = tmpHostName.getHost();
                     } else {
                         // 遍历 5 遍 DNS 列表，反复查询 DNS ，应付极端缓慢的海外域名解析
-                        List<InetAddress> records = Collections.emptyList();
                         boolean isOk = false;
                         for (int i = 0; !isOk && i < 5; i++) {
                             try {
                                 for (Dns dns : okHttpDnsArray) {
-                                    records = dns.lookup(hostName.getHost());
+                                    records = dns.lookup(tmpHostName.getHost());
 
                                     if (records.size() > 0) {
                                         ipAddress = records.get(0).getHostAddress();
@@ -292,34 +292,27 @@ public class WebsocketService extends Service implements
                         }
                     }
 
+                    // 尝试登录、拿到 Cookie
                     if (ipAddress != null && !"".equals(ipAddress)) {
+                        String finalHostName = hostName;
+                        List<InetAddress> finalRecords = records;
                         OkHttpClient client = new OkHttpClient.Builder()
                             .cookieJar(new JavaNetCookieJar(cookieManager))
-                            // .cookieJar(new CookieJar() {
-                            //     @Override
-                            //     public void saveFromResponse(@NonNull HttpUrl httpUrl, @NonNull List<Cookie> list) {
-                            //         synchronized (TAG) {
-                            //             cookies = list;
-                            //         }
-                            //     }
-                            //
-                            //     @NonNull
-                            //     @Override
-                            //     public List<Cookie> loadForRequest(@NonNull HttpUrl httpUrl) {
-                            //         synchronized (TAG) {
-                            //             return cookies == null ? new ArrayList<>() : cookies;
-                            //         }
-                            //     }
-                            // })
+                            .dns((Dns) domain -> {
+                                // 使用已有解析
+                                if (domain.equals(finalHostName) && finalRecords.size() > 0) {
+                                    return finalRecords;
+                                }
+
+                                return Dns.SYSTEM.lookup(domain);
+                            })
                             .build();
                         FormBody formBody = new FormBody.Builder()
                             .add("accessKeySecret", accessKeySecret)
                             .build();
 
                         Request request = new Request.Builder()
-                            // 指定解析获得的 IP 地址定向访问
-                            .url(okhttpLoginUrl.newBuilder().host(ipAddress).build())
-                            .addHeader("Host", okhttpLoginUrl.host())
+                            .url(okhttpLoginUrl)
                             .post(formBody)
                             .build();
 
@@ -352,11 +345,13 @@ public class WebsocketService extends Service implements
                             postNotification("WebSocket连接失败！调试消息：" + e.getMessage());
                         }
                     }
-                } catch (MalformedURLException e) {
+                } catch (MalformedURLException | URISyntaxException e) {
                     postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
                 }
             }
 
+            // 走到这一步，前面流程务必登录成功
+            // 尝试连接 WebSocket
             if (!"".equals(connectUrlInText)) {
                 // Create a WebSocketFactory instance.
                 WebSocketFactory factory = new WebSocketFactory();
@@ -417,14 +412,8 @@ public class WebsocketService extends Service implements
                 });
 
                 try {
-                    URI uri = null;
-                    try {
-                        uri = loginURL.toURI();
-                    } catch (URISyntaxException e) {
-                        // ignore
-                    }
-
-                    List<HttpCookie> cookies = cookieManager.getCookieStore().get(Objects.requireNonNull(uri));
+                    // 填 Cookie 到 Header 里
+                    List<HttpCookie> cookies = cookieManager.getCookieStore().get(Objects.requireNonNull(loginURI));
                     if (cookies.size() > 0) {
                         HttpCookie cookie = cookies.get(0);
                         ws.addHeader("Cookie", cookie.getName() + '=' + cookie.getValue());
