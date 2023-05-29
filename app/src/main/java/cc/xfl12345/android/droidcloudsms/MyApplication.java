@@ -17,9 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
-import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.Permission;
-import com.hjq.permissions.XXPermissions;
 
 import org.teasoft.bee.android.CreateAndUpgradeRegistry;
 import org.teasoft.beex.android.ApplicationRegistry;
@@ -28,13 +26,13 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import cc.xfl12345.android.droidcloudsms.model.AndroidPermissionNamePair;
 import cc.xfl12345.android.droidcloudsms.model.BeeCreateAndUpgrade;
 import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
-import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
+import cc.xfl12345.android.droidcloudsms.model.PermissionManager;
 
 public class MyApplication extends Application {
     public static final Integer STALE_NOTIFICATION_ID = 0;
@@ -51,11 +49,11 @@ public class MyApplication extends Application {
         return myShizukuContext;
     }
 
+    private PermissionManager permissionManager = null;
+
     private NotificationManager notificationManager;
 
-    public static List<Map.Entry<String, String>> androidPermissionList = new ArrayList<>();
-
-    public static List<PermissionItem> permissionList;
+    public static List<AndroidPermissionNamePair> androidPermissionList = new ArrayList<>();
 
     private Intent websocketServiceIntent;
 
@@ -68,8 +66,6 @@ public class MyApplication extends Application {
     public boolean isConnected2WebsocketService() {
         return connected2WebsocketService;
     }
-
-    private WebsocketService.WebsocketServiceBinder binder;
 
     private WebsocketService websocketService = null;
 
@@ -86,18 +82,17 @@ public class MyApplication extends Application {
         myShizukuContext = new MyShizukuContext(context);
 
         androidPermissionList = new ArrayList<>(10);
-        androidPermissionList.add(Map.entry("android.permission.INTERNET", "联网权限"));
-        androidPermissionList.add(Map.entry("android.permission.VIBRATE", "震动权限"));
-        androidPermissionList.add(Map.entry("android.permission.FOREGROUND_SERVICE", "前台服务权限"));
-        androidPermissionList.add(Map.entry(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
-        androidPermissionList.add(Map.entry(Permission.POST_NOTIFICATIONS, "发送通知权限"));
-        androidPermissionList.add(Map.entry(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化权限"));
-        initPermissionList();
+        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.ACCESS_NETWORK_STATE", "获取网络状态权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.INTERNET", "联网权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.VIBRATE", "震动权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.FOREGROUND_SERVICE", "前台服务权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Permission.POST_NOTIFICATIONS, "发送通知权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化权限"));
 
         notificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         // 注册通用通知回调
         NotificationUtils.registerNotification(context);
-
         createStaleNotification();
 
         // source code URL=https://www.jianshu.com/p/b245c4e56e6c
@@ -147,8 +142,7 @@ public class MyApplication extends Application {
             @Override
             public void onServiceConnected(ComponentName name, IBinder iBinder) {
                 connected2WebsocketService = true;
-                binder = (WebsocketService.WebsocketServiceBinder) iBinder;
-                websocketService = binder.getService();
+                websocketService = ((WebsocketService.WebsocketServiceBinder) iBinder).getService();
             }
 
             @Override
@@ -226,108 +220,7 @@ public class MyApplication extends Application {
         createStaleNotification();
     }
 
-    private void initPermissionList() {
-        permissionList = new ArrayList<>(MyApplication.androidPermissionList.size() + 2);
-        // 添加 Shizuku 权限选项
-        permissionList.add(new PermissionItem() {
-            @Override
-            public String getDisplayName() {
-                return "Shizuku";
-            }
 
-            @Override
-            public String getCodeName() {
-                return "Shizuku";
-            }
-
-            @Override
-            public boolean isGranted() {
-                return myShizukuContext.isGranted();
-            }
-
-            @Override
-            public void requestPermission(boolean beforeRequestStatus, boolean targetStatus) {
-                if (targetStatus) {
-                    getRequestPermissionCallback().callback(
-                        beforeRequestStatus,
-                        myShizukuContext.requirePermission(),
-                        targetStatus
-                    );
-                } else {
-                    // 暂时还不支持撤销授权，这种操作
-                    getRequestPermissionCallback().callback(
-                        beforeRequestStatus,
-                        isGranted(),
-                        targetStatus
-                    );
-                }
-            }
-        });
-        // 添加 安卓权限选项
-        androidPermissionList.forEach(entry -> permissionList.add(new PermissionItem() {
-            @Override
-            public String getDisplayName() {
-                return entry.getValue();
-            }
-
-            @Override
-            public String getCodeName() {
-                return entry.getKey();
-            }
-
-            @Override
-            public void requestPermission(boolean beforeRequestStatus, boolean targetStatus) {
-                if (targetStatus) {
-                    XXPermissions.with(context)
-                        .permission(getCodeName())
-                        .request(new OnPermissionCallback() {
-                            @Override
-                            public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
-                                getRequestPermissionCallback().callback(
-                                    beforeRequestStatus,
-                                    true,
-                                    targetStatus
-                                );
-                            }
-
-                            @Override
-                            public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
-                                getRequestPermissionCallback().callback(
-                                    beforeRequestStatus,
-                                    false,
-                                    targetStatus
-                                );
-                            }
-                        });
-                } else {
-                    // 暂时还不支持撤销授权，这种操作
-                    getRequestPermissionCallback().callback(
-                        beforeRequestStatus,
-                        isGranted(),
-                        targetStatus
-                    );
-                }
-            }
-
-            @Override
-            public boolean isGranted() {
-                return XXPermissions.isGranted(context, getCodeName());
-            }
-        }));
-    }
-
-    public boolean isAllPermissionGranted() {
-        boolean isAllGranted = true;
-        // 遍历检查全部权限情况
-        for (PermissionItem item : permissionList) {
-            if (!item.isGranted()) {
-                isAllGranted = false;
-                break;
-            }
-        }
-
-        return isAllGranted;
-    }
 
     public static Activity getCurrentActivity() {
         return MyActivityManager.getCurrentActivity();
@@ -368,5 +261,18 @@ public class MyApplication extends Application {
 
             activityStack.clear();
         }
+    }
+
+    public PermissionManager getPermissionManager(Activity activity) {
+        if (permissionManager == null) {
+            permissionManager = new PermissionManager.Builder(activity)
+                .withShizuku(myShizukuContext)
+                .withPermissions(androidPermissionList)
+                .build();
+        } else {
+            permissionManager.setActivity(activity);
+        }
+
+        return permissionManager;
     }
 }

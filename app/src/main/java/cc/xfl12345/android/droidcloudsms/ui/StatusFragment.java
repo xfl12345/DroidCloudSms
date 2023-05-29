@@ -34,10 +34,17 @@ public class StatusFragment extends Fragment {
         FragmentStatusBinding binding = FragmentStatusBinding.bind(view);
         context = ((MyApplication) requireContext().getApplicationContext());
 
-        boolean smsStandby = context.isConnected2WebsocketService() &&
+        boolean connected2WebsocketService = context.isConnected2WebsocketService();
+
+        boolean smsStandby = connected2WebsocketService &&
             context.getWebsocketService().isSmsReady();
         binding.smsStatusMonitor.setText(smsStandby ? "正常工作" : "未工作");
         binding.smsStatusMonitor.setTextColor(smsStandby ? Color.GREEN : Color.RED);
+
+        boolean wsStandby = connected2WebsocketService &&
+            context.getWebsocketService().isWebsocketConnected();
+        binding.wsStatusMonitor.setText(wsStandby ? "已连接" : "未连接");
+        binding.wsStatusMonitor.setTextColor(wsStandby ? Color.GREEN : Color.RED);
 
         return view;
     }

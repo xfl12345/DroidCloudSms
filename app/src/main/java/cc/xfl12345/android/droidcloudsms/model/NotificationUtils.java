@@ -14,7 +14,9 @@ import android.content.IntentFilter;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import cc.xfl12345.android.droidcloudsms.R;
 
@@ -58,7 +60,6 @@ public class NotificationUtils {
         return requestCode;
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     public static void registerNotification(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {   // 版本大于等于 安卓8.0
             NotificationManager notificationManager = getNotificationManager(context);
@@ -84,11 +85,7 @@ public class NotificationUtils {
             }
         };
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(broadcastReceiver, filter, Context.RECEIVER_EXPORTED);
-        } else {
-            context.registerReceiver(broadcastReceiver, filter);
-        }
+        ContextCompat.registerReceiver(context, broadcastReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
     }
 
     public static void unregisterNotification(Context context) {

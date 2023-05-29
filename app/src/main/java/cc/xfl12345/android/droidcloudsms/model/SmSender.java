@@ -12,11 +12,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
 import android.os.RemoteException;
-import android.telephony.SmsManager;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -101,7 +100,6 @@ public class SmSender implements Closeable {
         smsManager.sendTextMessage(phoneNumber, null, content, sentPI, null);
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     protected void registerReceiver() {
         sentSmActionBroadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -150,13 +148,19 @@ public class SmSender implements Closeable {
         };
 
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(sentSmActionBroadcastReceiver, new IntentFilter(SENT_SM_ACTION), Context.RECEIVER_EXPORTED);
-            context.registerReceiver(clearNotificationActionBroadcastReceiver, new IntentFilter(CLEAR_NOTIFICATION_ACTION), Context.RECEIVER_EXPORTED);
-        } else {
-            context.registerReceiver(sentSmActionBroadcastReceiver, new IntentFilter(SENT_SM_ACTION));
-            context.registerReceiver(clearNotificationActionBroadcastReceiver, new IntentFilter(CLEAR_NOTIFICATION_ACTION));
-        }
+        ContextCompat.registerReceiver(
+            context,
+            sentSmActionBroadcastReceiver,
+            new IntentFilter(SENT_SM_ACTION),
+            ContextCompat.RECEIVER_EXPORTED
+        );
+        ContextCompat.registerReceiver(
+            context,
+            clearNotificationActionBroadcastReceiver,
+            new IntentFilter(CLEAR_NOTIFICATION_ACTION),
+            ContextCompat.RECEIVER_EXPORTED
+        );
+
     }
 
     protected void unregisterReceiver() {

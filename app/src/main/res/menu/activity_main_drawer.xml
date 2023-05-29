@@ -5,9 +5,9 @@
 
     <group android:checkableBehavior="single">
         <item
-            android:id="@+id/nav_welcome"
+            android:id="@+id/nav_home"
             android:icon="@drawable/ic_launcher_foreground"
-            android:title="@string/nav_label_welcome" />
+            android:title="@string/nav_label_home" />
         <item
             android:id="@+id/nav_permission_manager"
             android:icon="@drawable/ic_launcher_foreground"

@@ -136,11 +136,6 @@ dependencies {
     implementation group: 'com.squareup.okhttp3', name: 'okhttp-urlconnection', version: okHttp3Version
 
 
-
-    // 中国七牛云 DNS 请求框架 happy dns
-    // https://mvnrepository.com/artifact/com.qiniu/happy-dns
-    implementation group: 'com.qiniu', name: 'happy-dns', version: '2.0.1'
-
     // 判断 字符串 是 IP地址 还是 域名 的工具库
     // https://mvnrepository.com/artifact/com.github.seancfoley/ipaddress
     implementation group: 'com.github.seancfoley', name: 'ipaddress', version: '5.4.0'

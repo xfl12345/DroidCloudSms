@@ -1,6 +1,6 @@
 package cc.xfl12345.android.droidcloudsms.ui;
 
-import android.content.Context;
+import android.app.Activity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,7 +8,6 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.github.iielse.switchbutton.SwitchView;
 
@@ -20,7 +19,7 @@ import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
 
 public class PermissionListAdapter extends BaseAdapter {
 
-    private Context context;
+    private Activity activity;
 
     private List<PermissionItem> dataList;
 
@@ -30,8 +29,8 @@ public class PermissionListAdapter extends BaseAdapter {
         this.afterButtonClicked = afterButtonClicked;
     }
 
-    public PermissionListAdapter(Context context, List<PermissionItem> dataList) {
-        this.context = context;
+    public PermissionListAdapter(Activity activity, List<PermissionItem> dataList) {
+        this.activity = activity;
         this.dataList = dataList;
     }
 
@@ -59,7 +58,7 @@ public class PermissionListAdapter extends BaseAdapter {
         String displayName = dataItem.getDisplayName();
 
         if(convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.permission_item, null);
+            convertView = LayoutInflater.from(activity).inflate(R.layout.permission_item, null);
         }
 
 

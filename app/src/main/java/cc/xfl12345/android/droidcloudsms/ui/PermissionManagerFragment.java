@@ -2,6 +2,7 @@ package cc.xfl12345.android.droidcloudsms.ui;
 
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -10,15 +11,25 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.hjq.permissions.OnPermissionCallback;
+import com.hjq.permissions.XXPermissions;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
 import cc.xfl12345.android.droidcloudsms.databinding.FragmentPermissionManagerBinding;
+import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
+import cc.xfl12345.android.droidcloudsms.model.PermissionManager;
 
 public class PermissionManagerFragment extends Fragment {
 
     private FragmentPermissionManagerBinding binding;
 
     private boolean needJumpBack = false;
+
+    private PermissionManager permissionManager;
 
     public PermissionManagerFragment() {
     }
@@ -30,6 +41,8 @@ public class PermissionManagerFragment extends Fragment {
             Bundle bundle = getArguments();
             needJumpBack = bundle.getBoolean("needJumpBack", false);
         }
+
+        permissionManager = ((MyApplication) requireContext().getApplicationContext()).getPermissionManager(requireActivity());
     }
 
     @Override
@@ -38,11 +51,11 @@ public class PermissionManagerFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_permission_manager, container, false);
         binding = FragmentPermissionManagerBinding.bind(view);
 
-        PermissionListAdapter adapter = new PermissionListAdapter(requireContext(), MyApplication.permissionList);
+        PermissionListAdapter adapter = new PermissionListAdapter(requireActivity(), permissionManager.getPermissionList());
         if (needJumpBack) {
             adapter.setAfterButtonClickedListener((permissionName, granted) -> {
                 new Thread(() -> {
-                    if (((MyApplication) requireContext().getApplicationContext()).isAllPermissionGranted()) {
+                    if (permissionManager.isAllPermissionGranted()) {
                         try {
                             requireActivity().runOnUiThread(() -> {
                                 NavController navController = Navigation.findNavController(requireView());
@@ -61,4 +74,6 @@ public class PermissionManagerFragment extends Fragment {
 
         return view;
     }
+
+
 }

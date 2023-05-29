@@ -1,5 +1,7 @@
 package cc.xfl12345.android.droidcloudsms.model;
 
+import android.app.Activity;
+
 public abstract class PermissionItem {
 
     private RequestPermissionCallback requestPermissionCallback = (beforeRequestStatus, afterRequestStatus, targetStatus) -> {};

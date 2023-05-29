@@ -33,8 +33,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:paddingHorizontal="10dp"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toTopOf="@id/textview_title_sms_status"
             app:layout_constraintLeft_toRightOf="@id/textview_title_sms_status"/>
+
+        <TextView
+            android:id="@+id/textview_title_ws_status"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="@string/ws_status"
+            app:layout_constraintTop_toBottomOf="@id/textview_title_sms_status"
+            app:layout_constraintLeft_toLeftOf="parent" />
+        <TextView
+            android:id="@+id/ws_status_monitor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="10dp"
+            app:layout_constraintTop_toTopOf="@id/textview_title_ws_status"
+            app:layout_constraintLeft_toRightOf="@id/textview_title_ws_status"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </FrameLayout>

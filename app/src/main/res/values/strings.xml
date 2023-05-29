@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">DroidCloudSms</string>
+    <string name="app_name">私人云短信</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="action_settings">Settings</string>
 
@@ -7,7 +7,7 @@
     <string name="input_limit_only_num">1234567890</string>
 
 
-    <string name="nav_label_welcome">首页</string>
+    <string name="nav_label_home">主页</string>
     <string name="nav_label_permission_manager">权限管理</string>
     <string name="nav_label_setting">设置</string>
     <string name="nav_label_status">状态</string>
@@ -31,6 +31,7 @@
     <string name="setting_header_websocket">WebSocket</string>
     <string name="setting_title_websocket_server_login_url">WS登录URL</string>
     <string name="setting_title_websocket_server_access_key_secret">口令</string>
+    <string name="ws_status">WebSocket状态</string>
 
 
 </resources>

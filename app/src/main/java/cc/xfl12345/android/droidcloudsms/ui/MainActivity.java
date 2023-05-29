@@ -3,7 +3,6 @@ package cc.xfl12345.android.droidcloudsms.ui;
 import android.os.Bundle;
 import android.os.PersistableBundle;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -14,13 +13,6 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
-import com.hjq.permissions.OnPermissionCallback;
-import com.hjq.permissions.Permission;
-import com.hjq.permissions.XXPermissions;
-
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
@@ -52,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mAppBarConfiguration = new AppBarConfiguration.Builder(
-            R.id.nav_welcome,
+            R.id.nav_home,
             R.id.nav_permission_manager,
             R.id.nav_setting,
             R.id.nav_status,
@@ -69,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 如果未全部授权，则转跳至授权管理器界面
         new Thread(() -> {
-            if (!((MyApplication) getApplication()).isAllPermissionGranted()) {
+            if (!((MyApplication) getApplication()).getPermissionManager(this).isAllPermissionGranted()) {
                 Bundle bundle = new Bundle();
                 bundle.putBoolean("needJumpBack", true);
                 drawerLayout.post(() -> navController.navigate(R.id.nav_permission_manager, bundle));

@@ -13,8 +13,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
-import android.net.InetAddresses;
-import android.net.SSLCertificateSocketFactory;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
@@ -28,37 +26,33 @@ import androidx.preference.PreferenceManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import com.neovisionaries.ws.client.DualStackMode;
 import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.neovisionaries.ws.client.WebSocketFactory;
 import com.neovisionaries.ws.client.WebSocketFrame;
-import com.qiniu.android.dns.DnsManager;
-import com.qiniu.android.dns.IResolver;
-import com.qiniu.android.dns.NetworkInfo;
-import com.qiniu.android.dns.Record;
-import com.qiniu.android.dns.dns.DnsUdpResolver;
-import com.qiniu.android.dns.dns.DohResolver;
-import com.qiniu.android.dns.local.AndroidDnsServer;
 
 import java.io.IOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.HttpCookie;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TimeZone;
 
 import javax.net.ssl.SSLContext;
 
 import cc.xfl12345.android.droidcloudsms.model.IdGenerator;
-import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.SmSender;
 import cc.xfl12345.android.droidcloudsms.model.http.response.JsonApiResponseData;
 import cc.xfl12345.android.droidcloudsms.model.ws.SmsTaskRequestObject;
@@ -66,11 +60,14 @@ import cc.xfl12345.android.droidcloudsms.model.ws.WebSocketMessage;
 import inet.ipaddr.HostName;
 import okhttp3.Cookie;
 import okhttp3.CookieJar;
+import okhttp3.Dns;
 import okhttp3.FormBody;
 import okhttp3.HttpUrl;
+import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.dnsoverhttps.DnsOverHttps;
 import rikka.shizuku.Shizuku;
 
 // source code URL=https://blog.csdn.net/yxl930401/article/details/127963284
@@ -95,6 +92,8 @@ public class WebsocketService extends Service implements
 
     private MyApplication context;
 
+    private NotificationManager notificationManager;
+
     private SmSender smSender = null;
 
     public SmSender getSmSender() {
@@ -102,7 +101,7 @@ public class WebsocketService extends Service implements
     }
 
     public boolean isSmsReady() {
-        return getSmSender() != null;
+        return smSender != null;
     }
 
     private boolean isClosing = false;
@@ -133,7 +132,11 @@ public class WebsocketService extends Service implements
         return PreferenceManager.getDefaultSharedPreferences(context);
     }
 
-    private DnsManager dns;
+    private Dns[] okHttpDnsArray = new Dns[0];
+
+    private OkHttpClient okHttpBootstrapClient = null;
+
+    private CookieManager cookieManager;
 
     public WebsocketService() {
     }
@@ -145,7 +148,6 @@ public class WebsocketService extends Service implements
         }
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     public void onCreate() {
         super.onCreate();
@@ -153,12 +155,49 @@ public class WebsocketService extends Service implements
         context = (MyApplication) getApplicationContext();
         getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 
+        initNotification();
+        initSmSender();
+        Shizuku.addRequestPermissionResultListener(this);
+
+        cookieManager = new CookieManager();
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        okHttpBootstrapClient = new OkHttpClient.Builder().build();
+        if (isInChina()) {
+            okHttpDnsArray = new Dns[]{
+                // // 腾讯云 DNSPod DNS DoH
+                generateOkHttpDns("https://120.53.53.53/dns-query"),
+                // // 阿里云 AliDNS DoH
+                generateOkHttpDns("https://223.5.5.5/dns-query"),
+                // // Cloudflare 备用DNS IPv6 DoH
+                generateOkHttpDns("https://[2606:4700:4700::1001]/dns-query"),
+                generateOkHttpDns("https://120.53.53.53/dns-query"),
+                Dns.SYSTEM
+            };
+        } else {
+            okHttpDnsArray = new Dns[]{
+                // Cloudflare 主力DNS IPv4 DoH
+                generateOkHttpDns("https://1.1.1.1/dns-query"),
+                // Cloudflare 主力DNS IPv6 DoH
+                generateOkHttpDns("https://[2606:4700:4700::1111]/dns-query"),
+                // Google DNS DoH
+                generateOkHttpDns("https://dns.google/dns-query"),
+                Dns.SYSTEM,
+                // OpenDNS 主力DNS IPv4 DoH
+                generateOkHttpDns("https://208.67.222.222/dns-query")
+            };
+        }
+
+        reinitWsGo();
+        Log.i(TAG, "onCreate...");
+    }
+
+    private void initNotification() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             // 8.0以下
             startForeground(SERVICE_ID_INT, new Notification());
         } else {
             // 8.0以及以上
-            NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (notificationManager != null) {
                 // NotificationManager.IMPORTANCE_MIN 通知栏消息的重要级别  最低，不让弹出
                 // IMPORTANCE_MIN 前台时，在阴影区能看到，后台时 阴影区不消失，增加显示 IMPORTANCE_NONE时 一样的提示
@@ -197,59 +236,16 @@ public class WebsocketService extends Service implements
         } else {
             context.registerReceiver(broadcastReceiver, filter);
         }
-
-
-        if (DnsManager.needHttpDns()) {
-            IResolver[] resolvers = new IResolver[] {
-                AndroidDnsServer.defaultResolver(context),
-                // // 腾讯云 DNSPod DNS DoH
-                new DohResolver("https://120.53.53.53/dns-query", Record.TYPE_A, 2),
-                new DohResolver("https://120.53.53.53/dns-query", Record.TYPE_AAAA, 2),
-                // // 阿里云 AliDNS DoH
-                new DohResolver("https://223.5.5.5/dns-query", Record.TYPE_A, 2),
-                new DohResolver("https://223.5.5.5/dns-query", Record.TYPE_AAAA, 2),
-                // // Cloudflare 备用DNS IPv6 DoH
-                new DohResolver("https://[2606:4700:4700::1001]/dns-query", Record.TYPE_A, 2),
-                new DohResolver("https://[2606:4700:4700::1001]/dns-query", Record.TYPE_AAAA, 2),
-                // // 腾讯云 DNSPod DNS
-                new DnsUdpResolver("119.29.29.29", Record.TYPE_A, 2),
-                new DnsUdpResolver("119.29.29.29", Record.TYPE_AAAA, 2),
-                // // 阿里云 AliDNS
-                new DnsUdpResolver("223.5.5.5", Record.TYPE_A, 2),
-                new DnsUdpResolver("223.5.5.5", Record.TYPE_AAAA, 2)
-
-            };
-            dns = new DnsManager(NetworkInfo.normal, resolvers);
-        } else {
-            IResolver[] resolvers = new IResolver[] {
-                AndroidDnsServer.defaultResolver(context),
-                // Cloudflare 主力DNS IPv4 DoH
-                new DohResolver("https://1.1.1.1/dns-query", Record.TYPE_A, 2),
-                new DohResolver("https://1.1.1.1/dns-query", Record.TYPE_AAAA, 2),
-                // Cloudflare 主力DNS IPv6 DoH
-                new DohResolver("https://[2606:4700:4700::1111]/dns-query"),
-                // OpenDNS 主力DNS IPv4 DoH
-                new DohResolver("https://208.67.222.222/dns-query"),
-                // Google DNS DoH
-                new DohResolver("https://dns.google/dns-query"),
-            };
-            dns = new DnsManager(NetworkInfo.normal, resolvers);
-        }
-
-        Shizuku.addRequestPermissionResultListener(this);
-        initSmSender();
-        reinitWsGo();
-
-        Log.i(TAG, "onCreate...");
     }
 
 
-    public void reinitWsGo() {
-        new Thread(() -> {
+    public Thread reinitWsGo() {
+        Thread thread = new Thread(() -> {
             synchronized (TAG) {
                 if (websocketInitialized) {
                     ws.sendClose();
                     websocketInitialized = false;
+                    // websocketConnected = false;
                 }
                 if (isClosing) {
                     return;
@@ -261,83 +257,69 @@ public class WebsocketService extends Service implements
             String accessKeySecret = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET, "");
             String connectUrlInText = "";
             String ipAddress = "";
-
-            final Map<Integer, List<Cookie>> cookies = new HashMap<>(Map.of(Integer.MAX_VALUE, Collections.emptyList()));
+            URL loginURL = null;
 
             // 尝试登录
             if (!"".equals(loginUrlInText)) {
                 try {
-
-                    HttpUrl okhttpLoginUrl = HttpUrl.parse(loginUrlInText);
-                    URL loginURL = new URL(loginUrlInText);
-                    boolean isOk2ConnectURL = true;
+                    HttpUrl okhttpLoginUrl = HttpUrl.get(loginUrlInText);
+                    loginURL = new URL(loginUrlInText);
 
                     HostName hostName = new HostName(loginURL.getHost());
-                    if (!hostName.isAddress()) {
+                    if (hostName.isAddress()) {
+                        ipAddress = hostName.getHost();
+                    } else {
                         // 遍历 5 遍 DNS 列表，反复查询 DNS ，应付极端缓慢的海外域名解析
-                        Record[] records = new Record[0];
-                        for (int i = 0; i < 5; i++) {
+                        List<InetAddress> records = Collections.emptyList();
+                        boolean isOk = false;
+                        for (int i = 0; !isOk && i < 5; i++) {
                             try {
-                                records = dns.queryRecords(hostName.getHost());
-                                if (records.length > 0) {
-                                    Record happyDnsRecord = records[0];
-                                    if (happyDnsRecord.isAAAA()) {
-                                        String[] tmpArr = happyDnsRecord.value.split(":");
-                                        StringBuilder stringBuilder = new StringBuilder(happyDnsRecord.value.length());
-                                        for (String ipAddresFragment : tmpArr) {
-                                            if (!"".equals(ipAddresFragment)) {
-                                                stringBuilder.append(Integer.toHexString(Integer.parseInt(ipAddresFragment))).append(":");
-                                            }
-                                        }
-                                        ipAddress = stringBuilder.substring(0, stringBuilder.length() - 2);
-                                    } else {
-                                        ipAddress = happyDnsRecord.value;
+                                for (Dns dns : okHttpDnsArray) {
+                                    records = dns.lookup(hostName.getHost());
+
+                                    if (records.size() > 0) {
+                                        ipAddress = records.get(0).getHostAddress();
+                                        isOk = true;
+                                        break;
                                     }
-                                    break;
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
-
-                            try {
-                                // 暂停 500 毫秒再重新询问
-                                Thread.sleep(500);
-                            } catch (InterruptedException ex) {
-                                // ignore
-                            }
                         }
-                        if (records.length == 0) {
-                            normalNotification("WebSocket登录URL域名解析失败！");
-                            isOk2ConnectURL = false;
+                        if (records.size() == 0) {
+                            postNotification("WebSocket登录URL域名解析失败！");
                         }
-                    } else {
-                        ipAddress = hostName.getHost();
                     }
 
-
-                    if (isOk2ConnectURL) {
+                    if (ipAddress != null && !"".equals(ipAddress)) {
                         OkHttpClient client = new OkHttpClient.Builder()
-                            .cookieJar(new CookieJar() {
-                                @Override
-                                public void saveFromResponse(@NonNull HttpUrl httpUrl, @NonNull List<Cookie> list) {
-                                    cookies.put(Integer.MAX_VALUE, list);
-                                }
-
-                                @NonNull
-                                @Override
-                                public List<Cookie> loadForRequest(@NonNull HttpUrl httpUrl) {
-                                    List<Cookie> result = cookies.get(Integer.MAX_VALUE);
-                                    return result == null ? new ArrayList<>() : result;
-                                }
-                            })
+                            .cookieJar(new JavaNetCookieJar(cookieManager))
+                            // .cookieJar(new CookieJar() {
+                            //     @Override
+                            //     public void saveFromResponse(@NonNull HttpUrl httpUrl, @NonNull List<Cookie> list) {
+                            //         synchronized (TAG) {
+                            //             cookies = list;
+                            //         }
+                            //     }
+                            //
+                            //     @NonNull
+                            //     @Override
+                            //     public List<Cookie> loadForRequest(@NonNull HttpUrl httpUrl) {
+                            //         synchronized (TAG) {
+                            //             return cookies == null ? new ArrayList<>() : cookies;
+                            //         }
+                            //     }
+                            // })
                             .build();
                         FormBody formBody = new FormBody.Builder()
                             .add("accessKeySecret", accessKeySecret)
                             .build();
 
                         Request request = new Request.Builder()
-                            // .url(Objects.requireNonNull(okhttpLoginUrl).newBuilder().host(ipAddress).build())
-                            .addHeader("Hos     t", okhttpLoginUrl.host())
+                            // 指定解析获得的 IP 地址定向访问
+                            .url(okhttpLoginUrl.newBuilder().host(ipAddress).build())
+                            .addHeader("Host", okhttpLoginUrl.host())
                             .post(formBody)
                             .build();
 
@@ -349,9 +331,6 @@ public class WebsocketService extends Service implements
                                     String loginResponsePayload = loginResponse.body().string();
                                     JsonApiResponseData responseData = new Gson().fromJson(loginResponsePayload, JsonApiResponseData.class);
                                     if (responseData.isSuccess()) {
-                                        // JsonObject jsonObject = new Gson().toJsonTree(responseData.getData()).getAsJsonObject();
-                                        // String token = jsonObject.get("saToken").getAsString();
-                                        // URL connectURL = new URL(loginURL, "./ws-connect?satoken=" + token);
                                         URL connectURL = new URL(loginURL, "./ws-connect");
                                         String tmpConnectURLInText = connectURL.toString();
                                         if (tmpConnectURLInText.startsWith("http")) {
@@ -360,21 +339,21 @@ public class WebsocketService extends Service implements
                                             connectUrlInText = tmpConnectURLInText;
                                         }
                                     } else {
-                                        normalNotification("WebSocket登录失败！调试消息：" + loginResponsePayload);
+                                        postNotification("WebSocket登录失败！调试消息：" + loginResponsePayload);
                                     }
                                 } catch (JsonSyntaxException e) {
-                                    normalNotification("WebSocket登录请求回执内容解析失败！调试消息：" + e.getMessage());
+                                    postNotification("WebSocket登录请求回执内容解析失败！调试消息：" + e.getMessage());
                                 }
                             } else {
-                                normalNotification("WebSocket登录失败！调试消息：" + loginResponse.body());
+                                postNotification("WebSocket登录请求失败！调试消息：" + loginResponse.body());
                             }
                             loginResponse.close();
                         } catch (IOException e) {
-                            normalNotification("WebSocket登录请求失败！调试消息：" + e.getMessage());
+                            postNotification("WebSocket连接失败！调试消息：" + e.getMessage());
                         }
                     }
                 } catch (MalformedURLException e) {
-                    normalNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
+                    postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
                 }
             }
 
@@ -387,7 +366,7 @@ public class WebsocketService extends Service implements
                     try {
                         context = SSLContext.getInstance("TLS", "AndroidOpenSSL");
                     } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
-                        normalNotification("WebSocket 创建TLS环境失败！调试消息：" + e.getMessage());
+                        postNotification("WebSocket 创建TLS环境失败！调试消息：" + e.getMessage());
                     }
 
                     // Set the custom SSL context.
@@ -398,7 +377,7 @@ public class WebsocketService extends Service implements
                 try {
                     ws = factory.createSocket(connectUrlInText);
                 } catch (IOException e) {
-                    normalNotification("WebSocket 初始化连接失败！调试消息：" + e.getMessage());
+                    postNotification("WebSocket 初始化连接失败！调试消息：" + e.getMessage());
                 }
 
                 ws.addListener(new WebSocketAdapter() {
@@ -426,25 +405,42 @@ public class WebsocketService extends Service implements
                                 }
                             }
                         } catch (Exception e) {
-                            normalNotification("收到消息，但解析发生错误。调试消息：" + e.getMessage());
+                            postNotification("收到消息，但解析发生错误。调试消息：" + e.getMessage());
                         }
                         super.onTextMessage(websocket, text);
+                    }
+
+                    @Override
+                    public void onCloseFrame(WebSocket websocket, WebSocketFrame frame) throws Exception {
+                        websocketConnected = false;
                     }
                 });
 
                 try {
-                    if (cookies.values().size() > 0) {
-                        Cookie cookie = cookies.values().iterator().next().get(0);
-                        ws.addHeader("Cookie", cookie.name() + '=' + cookie.value());
+                    URI uri = null;
+                    try {
+                        uri = loginURL.toURI();
+                    } catch (URISyntaxException e) {
+                        // ignore
+                    }
+
+                    List<HttpCookie> cookies = cookieManager.getCookieStore().get(Objects.requireNonNull(uri));
+                    if (cookies.size() > 0) {
+                        HttpCookie cookie = cookies.get(0);
+                        ws.addHeader("Cookie", cookie.getName() + '=' + cookie.getValue());
                     }
                     ws = ws.connect();
                     websocketInitialized = true;
+                    postNotification("WebSocket 连接成功！");
                 } catch (WebSocketException e) {
-                    normalNotification("WebSocket 连接失败！调试消息：" + e.getMessage());
+                    postNotification("WebSocket 连接失败！调试消息：" + e.getMessage());
                 }
 
             }
-        }).start();
+        });
+        thread.start();
+
+        return thread;
     }
 
 
@@ -498,18 +494,21 @@ public class WebsocketService extends Service implements
     private void initSmSender() {
         if (context.getMyShizukuContext().refreshPermissionStatus()) {
             try {
+                if (smSender != null) {
+                    smSender.close();
+                }
                 smSender = new SmSender(context);
-                normalNotification("创建短信服务成功！");
-            } catch (ReflectiveOperationException | RemoteException e) {
-                normalNotification("创建短信服务失败！原因：" + e.getMessage());
+                postNotification("创建短信服务成功！");
+            } catch (ReflectiveOperationException | RemoteException | IOException e) {
+                postNotification("创建短信服务失败！原因：" + e.getMessage());
                 e.printStackTrace();
             }
         } else {
-            normalNotification("创建短信服务失败！原因：" + "Shizuku 未授权");
+            postNotification("创建短信服务失败！原因：" + "Shizuku 未授权");
         }
     }
 
-    private int postNotification(String title, String content) {
+    private int postNotification(String content) {
         int requestCode = notificationIdGenerator.generate();
 
         // 设置取消后的动作
@@ -519,7 +518,7 @@ public class WebsocketService extends Service implements
 
         // 初始化 notification
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle(title)    // 设置标题
+            .setContentTitle("核心服务")    // 设置标题
             .setContentText(content)    // 设置通知文字
             .setSmallIcon(R.drawable.baseline_contact_mail_24)   // 设置左边的小图标
             .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.miyamizu_mitsuha_head))  // 设置大图标
@@ -532,10 +531,6 @@ public class WebsocketService extends Service implements
         getNotificationManager().notify(CHANNEL_ID, requestCode, notification);
 
         return requestCode;
-    }
-
-    private void normalNotification(String content) {
-        NotificationUtils.postNotification(context, SmSender.NOTIFICATION_TITLE, content);
     }
 
     @Override
@@ -560,4 +555,33 @@ public class WebsocketService extends Service implements
             }
         }
     }
+
+    // 简单通过时区判断是否在大陆
+    public boolean isInChina() {
+        try {
+            TimeZone zone = TimeZone.getDefault();
+            String id = zone.getID();
+            boolean result;
+            switch (id) {
+                case "Asia/Shanghai":
+                case "Asia/Chongqing":
+                case "Asia/Harbin":
+                case "Asia/Urumqi":
+                    result = true;
+                    break;
+                default:
+                    result = false;
+                    break;
+            }
+
+            return result;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private DnsOverHttps generateOkHttpDns(String urlInText) {
+        return new DnsOverHttps.Builder().client(okHttpBootstrapClient).url(HttpUrl.get(urlInText)).build();
+    }
+
 }

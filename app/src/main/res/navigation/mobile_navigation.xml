@@ -2,13 +2,13 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    app:startDestination="@id/nav_welcome">
+    app:startDestination="@id/nav_home">
 
     <fragment
-        android:id="@+id/nav_welcome"
-        android:name="cc.xfl12345.android.droidcloudsms.ui.WelcomeFragment"
-        android:label="@string/nav_label_welcome"
-        tools:layout="@layout/fragment_welcome" />
+        android:id="@+id/nav_home"
+        android:name="cc.xfl12345.android.droidcloudsms.ui.HomeFragment"
+        android:label="@string/nav_label_home"
+        tools:layout="@layout/fragment_home" />
 
     <fragment
         android:id="@+id/nav_permission_manager"
