@@ -19,6 +19,7 @@ import android.os.RemoteException;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.gson.Gson;
@@ -71,7 +72,7 @@ public class WebsocketService extends Service implements
     Shizuku.OnRequestPermissionResultListener,
     SharedPreferences.OnSharedPreferenceChangeListener {
 
-    public static final String CLEAR_COMMON_NOTIFICATION_ACTION = "cc.xfl12345.android.droidcloudsms.WebsocketService.CLEAR_COMMON_NOTIFICATION_ACTION";
+    public static final String CLEAR_NOTIFICATION_ACTION = "cc.xfl12345.android.droidcloudsms.WebsocketService.CLEAR_NOTIFICATION_ACTION";
 
     private static final String TAG = "DroidCloudSmsWebSocketService";
 
@@ -215,22 +216,15 @@ public class WebsocketService extends Service implements
             }
         }
 
-        IntentFilter filter = new IntentFilter(CLEAR_COMMON_NOTIFICATION_ACTION);
+        IntentFilter filter = new IntentFilter(CLEAR_NOTIFICATION_ACTION);
         broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int sequence = intent.getIntExtra("sequence", -1);
-                if (sequence != -1) {
-                    getNotificationManager().cancel(CHANNEL_ID, sequence);
-                }
             }
         };
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(broadcastReceiver, filter, Context.RECEIVER_EXPORTED);
-        } else {
-            context.registerReceiver(broadcastReceiver, filter);
-        }
+        ContextCompat.registerReceiver(context, broadcastReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
     }
 
 
@@ -501,7 +495,7 @@ public class WebsocketService extends Service implements
         int requestCode = notificationIdGenerator.generate();
 
         // 设置取消后的动作
-        Intent intent = new Intent(CLEAR_COMMON_NOTIFICATION_ACTION);
+        Intent intent = new Intent(CLEAR_NOTIFICATION_ACTION);
         intent.putExtra("sequence", requestCode);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT);
 

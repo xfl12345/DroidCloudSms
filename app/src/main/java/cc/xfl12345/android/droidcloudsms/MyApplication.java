@@ -91,7 +91,7 @@ public class MyApplication extends Application {
         androidPermissionList.add(new AndroidPermissionNamePair(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化权限"));
 
         notificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
-        // 注册通用通知回调
+        // 注册通用通知
         NotificationUtils.registerNotification(context);
         createStaleNotification();
 
@@ -181,8 +181,6 @@ public class MyApplication extends Application {
             e.printStackTrace();
         }
 
-        // 注销通用通知回调
-        NotificationUtils.unregisterNotification(context);
         notificationManager.cancel(STALE_NOTIFICATION_ID);
         MyActivityManager.finishAllActivity();
         super.onTerminate();
