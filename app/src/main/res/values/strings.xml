@@ -33,5 +33,11 @@
     <string name="setting_title_websocket_server_access_key_secret">口令</string>
     <string name="ws_status">WebSocket状态</string>
 
+    <string name="super_huge_string">
+        abcdef1234567890abcdef1234567890
+        abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+        abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890aA
+    </string>
+    <string name="click_me_to_see_more">点我展开剩余内容</string>
 
 </resources>

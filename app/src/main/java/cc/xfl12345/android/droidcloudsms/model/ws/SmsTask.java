@@ -4,6 +4,8 @@ public class SmsTask {
 
     private String phoneNumber;
 
+    private String validationCode;
+
     private String smsContent;
 
     public String getPhoneNumber() {
@@ -12,6 +14,14 @@ public class SmsTask {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public String getValidationCode() {
+        return validationCode;
+    }
+
+    public void setValidationCode(String validationCode) {
+        this.validationCode = validationCode;
     }
 
     public String getSmsContent() {

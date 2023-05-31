@@ -183,7 +183,7 @@ public class WebsocketService extends Service implements
             };
         }
 
-        reinitWsGo();
+        reinitWebSocket();
         Log.i(TAG, "onCreate...");
     }
 
@@ -228,7 +228,7 @@ public class WebsocketService extends Service implements
     }
 
 
-    public Thread reinitWsGo() {
+    public Thread reinitWebSocket() {
         Thread thread = new Thread(() -> {
             synchronized (TAG) {
                 if (websocketInitialized) {
@@ -528,13 +528,13 @@ public class WebsocketService extends Service implements
         if (MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL.equals(key)) {
             String secret = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET, null);
             if (secret != null) {
-                reinitWsGo();
+                reinitWebSocket();
             }
         }
         if (MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET.equals(key)) {
             String url = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL, null);
             if (url != null) {
-                reinitWsGo();
+                reinitWebSocket();
             }
         }
     }

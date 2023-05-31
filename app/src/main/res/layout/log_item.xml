@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <View
+        android:id="@+id/header_box"
+        android:layout_width="10dp"
+        android:layout_height="match_parent"
+        android:background="@android:color/holo_green_light"
+    />
+
+
+    <!--<com.ctetin.expandabletextviewlibrary.ExpandableTextView-->
+    <!--    android:id="@+id/content_box"-->
+    <!--    android:layout_height="wrap_content"-->
+    <!--    android:layout_width="0dp"-->
+    <!--    android:layout_weight="1"-->
+    <!--    android:lineSpacingExtra="4dp"-->
+    <!--    android:textSize="14sp"-->
+    <!--    app:ep_max_line="3"-->
+    <!--    app:ep_need_expand="true"-->
+    <!--    app:ep_need_contract="true"-->
+    <!--    app:ep_need_animation="true"-->
+    <!--    app:ep_contract_text="收回"-->
+    <!--    app:ep_expand_text="展开"-->
+    <!--    app:ep_need_link="false"-->
+    <!--    app:ep_need_convert_url="false"-->
+    <!--    app:ep_need_always_showright="true"/>-->
+
+    <!--<com.eric.android.view.ExpandableTextView-->
+    <!--    android:id="@+id/content_box"-->
+    <!--    android:layout_width="0dp"-->
+    <!--    android:layout_height="wrap_content"-->
+    <!--    android:layout_weight="1"-->
+    <!--    android:text="@string/super_huge_string"-->
+    <!--    app:expandable="true"-->
+    <!--    app:expandTipLabel="展开"-->
+    <!--    app:collapseTipLabel="收回"-->
+    <!--    app:collapseLines="3"-->
+    <!--    app:tipPosition="align_right"-->
+    <!--    app:tipsColor="#00FFFF" />-->
+
+
+    <!--<com.baozi.expandlibrary.ExpandText-->
+    <!--    android:id="@+id/content_box"-->
+    <!--    android:layout_width="0dp"-->
+    <!--    android:layout_height="wrap_content"-->
+    <!--    android:layout_weight="1"-->
+    <!--    app:limit_line="2"-->
+    <!--    app:close_end_text="展开全文"-->
+    <!--    app:open_end_text="收起"-->
+    <!--    app:allow_anim="true"-->
+    <!--    app:anim_during="1000"-->
+    <!--    app:default_open="false"-->
+    <!--    app:ellipse_text="..."/>-->
+
+</LinearLayout>

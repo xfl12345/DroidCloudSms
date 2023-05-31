@@ -152,5 +152,17 @@ dependencies {
     // https://mvnrepository.com/artifact/org.teasoft/bee-ext
     implementation group: 'org.teasoft', name: 'bee-ext', version: beeOrmVersion
 
+    // 可折叠展开的 TextView
+    // // https://github.com/MZCretin/ExpandableTextView
+    // implementation 'com.github.MZCretin:ExpandableTextView:v1.6.1-x'
+
+    // // https://github.com/yuanshuaiding/ExpandableTextView
+    // implementation 'com.eric.android.view:expandable-textview:1.2.1'
+
+    // // https://github.com/huangbaozi/ExpandText
+    // implementation 'com.baozi.expandtext:expandtext:1.0.0'
+
+    // https://github.com/Blogcat/Android-ExpandableTextView
+    implementation 'at.blogc:expandabletextview:1.0.5'
 
 }

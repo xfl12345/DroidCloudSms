@@ -22,7 +22,7 @@ public class OvalTouchAreaFilter implements View.OnTouchListener {
         return (xhat * xhat + yhat * yhat <= 1);
     }
 
-    // @SuppressLint("ClickableViewAccessibility")
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouch(View view, MotionEvent event) {
         int action = event.getActionMasked();

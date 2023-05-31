@@ -9,7 +9,6 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 
 import com.google.android.material.button.MaterialButton;
 
@@ -43,7 +42,7 @@ public class HomeFragment extends Fragment {
             button.setText("正在重新初始化WebSocket");
             new Thread(() -> {
                 try {
-                    Thread thread = context.getWebsocketService().reinitWsGo();
+                    Thread thread = context.getWebsocketService().reinitWebSocket();
                     thread.join();
                     updateButton(button);
                 } catch (Exception e) {
