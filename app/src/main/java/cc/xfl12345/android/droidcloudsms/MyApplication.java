@@ -79,6 +79,13 @@ public class MyApplication extends Application {
     public void onCreate() {
         super.onCreate();
         context = this;
+        synchronized (STALE_NOTIFICATION_ID) {
+            if (isExiting) {
+                System.exit(0);
+                return;
+            }
+        }
+
         myShizukuContext = new MyShizukuContext(context);
 
         androidPermissionList = new ArrayList<>(10);

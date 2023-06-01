@@ -18,6 +18,8 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
@@ -25,13 +27,14 @@ import androidx.preference.PreferenceManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import com.neovisionaries.ws.client.WebSocket;
-import com.neovisionaries.ws.client.WebSocketAdapter;
-import com.neovisionaries.ws.client.WebSocketException;
-import com.neovisionaries.ws.client.WebSocketFactory;
-import com.neovisionaries.ws.client.WebSocketFrame;
+
+import net.gotev.cookiestore.SharedPreferencesCookieStore;
+import net.gotev.cookiestore.WebKitSyncCookieManager;
+import net.gotev.cookiestore.okhttp.JavaNetCookieJar;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.HttpCookie;
@@ -42,11 +45,13 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
 
@@ -56,14 +61,17 @@ import cc.xfl12345.android.droidcloudsms.model.http.response.JsonApiResponseData
 import cc.xfl12345.android.droidcloudsms.model.ws.SmsTaskRequestObject;
 import cc.xfl12345.android.droidcloudsms.model.ws.WebSocketMessage;
 import inet.ipaddr.HostName;
+import okhttp3.CookieJar;
 import okhttp3.Dns;
 import okhttp3.FormBody;
 import okhttp3.HttpUrl;
-import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 import okhttp3.dnsoverhttps.DnsOverHttps;
+import okio.ByteString;
 import rikka.shizuku.Shizuku;
 
 // source code URL=https://blog.csdn.net/yxl930401/article/details/127963284
@@ -128,6 +136,28 @@ public class WebsocketService extends Service implements
         return PreferenceManager.getDefaultSharedPreferences(context);
     }
 
+    private String getSharedPreferencesName() {
+        String name = context.getPackageName() + "_preferences";
+        SharedPreferences sharedPreferences = context.getSharedPreferences(name, MODE_PRIVATE);
+        if (sharedPreferences.equals(getSharedPreferences())) {
+            return name;
+        } else {
+            try {
+                Method method = PreferenceManager.class.getDeclaredMethod("getDefaultSharedPreferencesName", Context.class);
+                method.setAccessible(true);
+                String tmp = (String) method.invoke(null, context);
+                if (tmp != null) {
+                    return tmp;
+                }
+            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                // ignore
+            }
+        }
+
+        postNotification("获取默认 SharedPreferences 的名字失败！");
+        return name;
+    }
+
     private Dns[] okHttpDnsArray = new Dns[0];
 
     private OkHttpClient okHttpBootstrapClient = null;
@@ -155,8 +185,17 @@ public class WebsocketService extends Service implements
         initSmSender();
         Shizuku.addRequestPermissionResultListener(this);
 
-        cookieManager = new CookieManager();
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
+        cookieManager = new WebKitSyncCookieManager(
+            new SharedPreferencesCookieStore(this, getSharedPreferencesName()),
+            CookiePolicy.ACCEPT_ALL,
+            exception -> {
+                postNotification("WebKitSyncCookieManager 创建失败！调试信息：" + exception.getMessage());
+                return null;
+            }
+        );
+
+        CookieManager.setDefault(cookieManager);
         okHttpBootstrapClient = new OkHttpClient.Builder().build();
         if (isInChina()) {
             okHttpDnsArray = new Dns[]{
@@ -227,14 +266,22 @@ public class WebsocketService extends Service implements
         ContextCompat.registerReceiver(context, broadcastReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
     }
 
+    private Dns getCachedOkHttpDns(String hostName, List<InetAddress> records) {
+        return (Dns) domain -> {
+            // 使用已有解析
+            if (domain.equals(hostName) && records.size() > 0) {
+                return records;
+            }
+
+            return Dns.SYSTEM.lookup(domain);
+        };
+    }
 
     public Thread reinitWebSocket() {
         Thread thread = new Thread(() -> {
             synchronized (TAG) {
                 if (websocketInitialized) {
-                    ws.sendClose();
-                    websocketInitialized = false;
-                    // websocketConnected = false;
+                    closeWebSocket();
                 }
                 if (isClosing) {
                     return;
@@ -250,13 +297,15 @@ public class WebsocketService extends Service implements
             List<InetAddress> records = Collections.emptyList();
             URL loginURL = null;
             URI loginURI = null;
+            CookieJar cookieJar = new JavaNetCookieJar(cookieManager);
+            Dns dns = Dns.SYSTEM;
 
             // 尝试登录
             if (!"".equals(loginUrlInText)) {
                 try {
                     HttpUrl okhttpLoginUrl = HttpUrl.get(loginUrlInText);
                     loginURL = new URL(loginUrlInText);
-                    loginURI = loginURL.toURI();
+                    // loginURI = loginURL.toURI();
 
                     // 先开展解析工作
                     hostName = loginURL.getHost();
@@ -268,8 +317,8 @@ public class WebsocketService extends Service implements
                         boolean isOk = false;
                         for (int i = 0; !isOk && i < 5; i++) {
                             try {
-                                for (Dns dns : okHttpDnsArray) {
-                                    records = dns.lookup(tmpHostName.getHost());
+                                for (Dns item : okHttpDnsArray) {
+                                    records = item.lookup(tmpHostName.getHost());
 
                                     if (records.size() > 0) {
                                         ipAddress = records.get(0).getHostAddress();
@@ -283,23 +332,16 @@ public class WebsocketService extends Service implements
                         }
                         if (records.size() == 0) {
                             postNotification("WebSocket登录URL域名解析失败！");
+                        } else {
+                            dns = getCachedOkHttpDns(hostName, records);
                         }
                     }
 
                     // 尝试登录、拿到 Cookie
                     if (ipAddress != null && !"".equals(ipAddress)) {
-                        String finalHostName = hostName;
-                        List<InetAddress> finalRecords = records;
                         OkHttpClient client = new OkHttpClient.Builder()
-                            .cookieJar(new JavaNetCookieJar(cookieManager))
-                            .dns((Dns) domain -> {
-                                // 使用已有解析
-                                if (domain.equals(finalHostName) && finalRecords.size() > 0) {
-                                    return finalRecords;
-                                }
-
-                                return Dns.SYSTEM.lookup(domain);
-                            })
+                            .cookieJar(cookieJar)
+                            .dns(dns)
                             .build();
                         FormBody formBody = new FormBody.Builder()
                             .add("accessKeySecret", accessKeySecret)
@@ -339,7 +381,7 @@ public class WebsocketService extends Service implements
                             postNotification("WebSocket连接失败！调试消息：" + e.getMessage());
                         }
                     }
-                } catch (MalformedURLException | URISyntaxException e) {
+                } catch (MalformedURLException e) {
                     postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
                 }
             }
@@ -347,43 +389,36 @@ public class WebsocketService extends Service implements
             // 走到这一步，前面流程务必登录成功
             // 尝试连接 WebSocket
             if (!"".equals(connectUrlInText)) {
-                // Create a WebSocketFactory instance.
-                WebSocketFactory factory = new WebSocketFactory();
-                if (connectUrlInText.startsWith("wss")) {
-                    // Create a custom SSL context.
-                    SSLContext context = null;
-                    try {
-                        context = SSLContext.getInstance("TLS", "AndroidOpenSSL");
-                    } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
-                        postNotification("WebSocket 创建TLS环境失败！调试消息：" + e.getMessage());
-                    }
+                OkHttpClient websocketOkHttpClient = new OkHttpClient.Builder()
+                    .callTimeout(3, TimeUnit.MINUTES)
+                    .pingInterval(40, TimeUnit.SECONDS)
+                    .cookieJar(cookieJar)
+                    .dns(dns)
+                    .build();
 
-                    // Set the custom SSL context.
-                    factory.setSSLContext(context);
-                }
+                Request request = new Request.Builder()
+                    .url(connectUrlInText)
+                    .build();
 
-                factory.setConnectionTimeout(10 * 1000);
-                try {
-                    ws = factory.createSocket(connectUrlInText);
-                } catch (IOException e) {
-                    postNotification("WebSocket 初始化连接失败！调试消息：" + e.getMessage());
-                }
-
-                ws.addListener(new WebSocketAdapter() {
+                WebSocketListener webSocketListener = new WebSocketListener() {
                     @Override
-                    public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
-                        websocketConnected = true;
-                        super.onConnected(websocket, headers);
-                    }
-
-                    @Override
-                    public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
+                    public void onClosed(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
                         websocketConnected = false;
-                        super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer);
+                        super.onClosed(webSocket, code, reason);
                     }
 
                     @Override
-                    public void onTextMessage(WebSocket websocket, String text) throws Exception {
+                    public void onClosing(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
+                        super.onClosing(webSocket, code, reason);
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
+                        super.onFailure(webSocket, t, response);
+                    }
+
+                    @Override
+                    public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
                         try {
                             WebSocketMessage message = new Gson().fromJson(text, WebSocketMessage.class);
                             if (WebSocketMessage.Type.request.equals(message.getMessageType())) {
@@ -396,26 +431,25 @@ public class WebsocketService extends Service implements
                         } catch (Exception e) {
                             postNotification("收到消息，但解析发生错误。调试消息：" + e.getMessage());
                         }
-                        super.onTextMessage(websocket, text);
                     }
 
                     @Override
-                    public void onCloseFrame(WebSocket websocket, WebSocketFrame frame) throws Exception {
-                        websocketConnected = false;
+                    public void onMessage(@NonNull WebSocket webSocket, @NonNull ByteString bytes) {
+                        super.onMessage(webSocket, bytes);
                     }
-                });
+
+                    @Override
+                    public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
+                        websocketConnected = true;
+                        super.onOpen(webSocket, response);
+                    }
+                };
 
                 try {
-                    // 填 Cookie 到 Header 里
-                    List<HttpCookie> cookies = cookieManager.getCookieStore().get(Objects.requireNonNull(loginURI));
-                    if (cookies.size() > 0) {
-                        HttpCookie cookie = cookies.get(0);
-                        ws.addHeader("Cookie", cookie.getName() + '=' + cookie.getValue());
-                    }
-                    ws = ws.connect();
+                    ws = websocketOkHttpClient.newWebSocket(request, webSocketListener);
                     websocketInitialized = true;
                     postNotification("WebSocket 连接成功！");
-                } catch (WebSocketException e) {
+                } catch (Exception e) {
                     postNotification("WebSocket 连接失败！调试消息：" + e.getMessage());
                 }
 
@@ -426,6 +460,15 @@ public class WebsocketService extends Service implements
         return thread;
     }
 
+    public void closeWebSocket() {
+        if (ws != null && websocketInitialized) {
+            boolean shutDownFlag = ws.close(1000, "manual close");
+            postNotification("WebSocket 关闭" + (shutDownFlag ? "成功" : "失败"));
+            ws.cancel();
+            ws = null;
+        }
+    }
+
 
     @Override
     public void onDestroy() {
@@ -434,7 +477,7 @@ public class WebsocketService extends Service implements
         synchronized (TAG) {
             isClosing = true;
             if (websocketInitialized) {
-                ws.sendClose();
+                closeWebSocket();
             }
         }
 
