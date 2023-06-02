@@ -33,6 +33,8 @@ import cc.xfl12345.android.droidcloudsms.model.BeeCreateAndUpgrade;
 import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.PermissionManager;
+import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionEventHelper;
+import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionListener;
 
 public class MyApplication extends Application {
     public static final Integer STALE_NOTIFICATION_ID = 0;
@@ -61,17 +63,15 @@ public class MyApplication extends Application {
 
     private boolean boundWebsocketService = false;
 
-    private boolean connected2WebsocketService = false;
+    private final WebSocketServiceConnectionEventHelper webSocketServiceConnectionEventHelper = new WebSocketServiceConnectionEventHelper();
 
-    public boolean isConnected2WebsocketService() {
-        return connected2WebsocketService;
-    }
-
-    private WebsocketService websocketService = null;
-
-    public WebsocketService getWebsocketService() {
-        return websocketService;
-    }
+    // public boolean isConnected2WebsocketService() {
+    //     return webSocketServiceConnectionEventHelper.isConnected();
+    // }
+    //
+    // public WebsocketService getWebsocketService() {
+    //     return webSocketServiceConnectionEventHelper.getService();
+    // }
 
     private Boolean isExiting = false;
 
@@ -148,13 +148,12 @@ public class MyApplication extends Application {
         websocketServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder iBinder) {
-                connected2WebsocketService = true;
-                websocketService = ((WebsocketService.WebsocketServiceBinder) iBinder).getService();
+                webSocketServiceConnectionEventHelper.onServiceConnected(((WebsocketService.WebsocketServiceBinder) iBinder).getService());
             }
 
             @Override
             public void onServiceDisconnected(ComponentName name) {
-                connected2WebsocketService = false;
+                webSocketServiceConnectionEventHelper.onServiceDisconnected();
             }
         };
         boundWebsocketService = bindService(websocketServiceIntent, websocketServiceConnection, Context.BIND_AUTO_CREATE);
@@ -179,6 +178,7 @@ public class MyApplication extends Application {
                     unbindService(websocketServiceConnection);
                     stopService(websocketServiceIntent);
                 }
+                webSocketServiceConnectionEventHelper.clearListener();
             }
         }
 
@@ -225,6 +225,14 @@ public class MyApplication extends Application {
         createStaleNotification();
     }
 
+
+    public void addWebSocketServiceConnectionListener(WebSocketServiceConnectionListener listener) {
+        webSocketServiceConnectionEventHelper.addListener(listener);
+    }
+
+    public boolean removeWebSocketServiceConnectionListener(WebSocketServiceConnectionListener listener) {
+        return webSocketServiceConnectionEventHelper.removeListener(listener);
+    }
 
 
     public static Activity getCurrentActivity() {

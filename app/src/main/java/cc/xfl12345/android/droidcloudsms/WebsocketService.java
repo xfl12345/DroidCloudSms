@@ -11,7 +11,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
@@ -37,26 +36,18 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
-import java.net.HttpCookie;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
-import javax.net.ssl.SSLContext;
-
+import cc.xfl12345.android.droidcloudsms.model.BaseEventAmplifier;
 import cc.xfl12345.android.droidcloudsms.model.IdGenerator;
 import cc.xfl12345.android.droidcloudsms.model.SmSender;
+import cc.xfl12345.android.droidcloudsms.model.ws.WebSocketManager;
 import cc.xfl12345.android.droidcloudsms.model.http.response.JsonApiResponseData;
 import cc.xfl12345.android.droidcloudsms.model.ws.SmsTaskRequestObject;
 import cc.xfl12345.android.droidcloudsms.model.ws.WebSocketMessage;
@@ -71,7 +62,6 @@ import okhttp3.Response;
 import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import okhttp3.dnsoverhttps.DnsOverHttps;
-import okio.ByteString;
 import rikka.shizuku.Shizuku;
 
 // source code URL=https://blog.csdn.net/yxl930401/article/details/127963284
@@ -108,21 +98,29 @@ public class WebsocketService extends Service implements
         return smSender != null;
     }
 
+    public boolean isWebSocketConnected() {
+        return isWebsocketInitialized() && webSocketManager.isConnected();
+    }
+
+    public boolean isWebSocketReconnecting() {
+        return isWebsocketInitialized() && webSocketManager.isReconnecting();
+    }
+
     private boolean isClosing = false;
 
-    private WebSocket ws;
+    private boolean recreatingWebSocket = false;
 
-    private boolean websocketInitialized = false;
+    public boolean isRecreatingWebSocket() {
+        return recreatingWebSocket;
+    }
+
+    private WebSocketManager webSocketManager;
 
     public boolean isWebsocketInitialized() {
-        return websocketInitialized;
+        return webSocketManager != null;
     }
 
-    private boolean websocketConnected = false;
-
-    public boolean isWebsocketConnected() {
-        return websocketConnected;
-    }
+    private WebSocketStatusEventAmplifier webSocketStatusEventAmplifier = new WebSocketStatusEventAmplifier();
 
     private BroadcastReceiver broadcastReceiver;
 
@@ -222,7 +220,42 @@ public class WebsocketService extends Service implements
             };
         }
 
-        reinitWebSocket();
+        webSocketStatusEventAmplifier.addListener(new WebSocketManager.StatusListener() {
+            @Override
+            public void onConnected() {
+                postNotification("WebSocket 连接成功！");
+            }
+
+            @Override
+            public void onDisconnected(@Nullable String reason, @Nullable Integer code, @Nullable Throwable throwable, @Nullable Response response) {
+                if ((webSocketManager != null && webSocketManager.isManualClose()) || isRecreatingWebSocket()) {
+                    return;
+                }
+
+                String message = "WebSocket 连接中断！调试消息：";
+                if (code != null) {
+                    message += String.format("代码[%s];", code);
+                }
+                if (reason != null) {
+                    message += String.format("reason=[%s];", reason);
+                }
+                if (throwable != null) {
+                    message += String.format("throwable.Msg=[%s];", throwable.getMessage());
+                }
+                if (response != null) {
+                    message += String.format("response.Msg=[%s];", response.message());
+                }
+
+                postNotification(message);
+            }
+
+            @Override
+            public void onRetryMaxReached() {
+                postNotification("WebSocket 多次重新连接失败！执行强制重置！");
+                initWebSocket();
+            }
+        });
+        initWebSocket();
         Log.i(TAG, "onCreate...");
     }
 
@@ -266,6 +299,23 @@ public class WebsocketService extends Service implements
         ContextCompat.registerReceiver(context, broadcastReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
     }
 
+    private void initSmSender() {
+        if (context.getMyShizukuContext().refreshPermissionStatus()) {
+            try {
+                if (smSender != null) {
+                    smSender.close();
+                }
+                smSender = new SmSender(context);
+                postNotification("创建短信服务成功！");
+            } catch (ReflectiveOperationException | RemoteException | IOException e) {
+                postNotification("创建短信服务失败！原因：" + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            postNotification("创建短信服务失败！原因：" + "Shizuku 未授权");
+        }
+    }
+
     private Dns getCachedOkHttpDns(String hostName, List<InetAddress> records) {
         return (Dns) domain -> {
             // 使用已有解析
@@ -277,196 +327,291 @@ public class WebsocketService extends Service implements
         };
     }
 
-    public Thread reinitWebSocket() {
-        Thread thread = new Thread(() -> {
-            synchronized (TAG) {
-                if (websocketInitialized) {
-                    closeWebSocket();
-                }
-                if (isClosing) {
-                    return;
-                }
-            }
+    private OkHttpClient okHttpWebsocketClientGenerator() {
+        SharedPreferences sharedPreferences = getSharedPreferences();
+        String loginUrlInText = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL, "");
+        String accessKeySecret = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET, "");
+        String connectUrlInText = "";
+        List<InetAddress> records = Collections.emptyList();
+        CookieJar cookieJar = new JavaNetCookieJar(cookieManager);
+        Dns okhttpDns = Dns.SYSTEM;
 
-            SharedPreferences sharedPreferences = getSharedPreferences();
-            String loginUrlInText = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL, "");
-            String accessKeySecret = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET, "");
-            String connectUrlInText = "";
+        // 尝试登录
+        if (!"".equals(loginUrlInText)) {
             String ipAddress = "";
             String hostName = "";
-            List<InetAddress> records = Collections.emptyList();
             URL loginURL = null;
-            URI loginURI = null;
-            CookieJar cookieJar = new JavaNetCookieJar(cookieManager);
-            Dns dns = Dns.SYSTEM;
+            try {
+                HttpUrl okhttpLoginUrl = HttpUrl.get(loginUrlInText);
+                loginURL = new URL(loginUrlInText);
+                // loginURI = loginURL.toURI();
 
-            // 尝试登录
-            if (!"".equals(loginUrlInText)) {
-                try {
-                    HttpUrl okhttpLoginUrl = HttpUrl.get(loginUrlInText);
-                    loginURL = new URL(loginUrlInText);
-                    // loginURI = loginURL.toURI();
-
-                    // 先开展解析工作
-                    hostName = loginURL.getHost();
-                    HostName tmpHostName = new HostName(hostName);
-                    if (tmpHostName.isAddress()) {
-                        ipAddress = tmpHostName.getHost();
-                    } else {
-                        // 遍历 5 遍 DNS 列表，反复查询 DNS ，应付极端缓慢的海外域名解析
-                        boolean isOk = false;
-                        for (int i = 0; !isOk && i < 5; i++) {
-                            try {
-                                for (Dns item : okHttpDnsArray) {
-                                    records = item.lookup(tmpHostName.getHost());
-
-                                    if (records.size() > 0) {
-                                        ipAddress = records.get(0).getHostAddress();
-                                        isOk = true;
-                                        break;
-                                    }
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        if (records.size() == 0) {
-                            postNotification("WebSocket登录URL域名解析失败！");
-                        } else {
-                            dns = getCachedOkHttpDns(hostName, records);
-                        }
-                    }
-
-                    // 尝试登录、拿到 Cookie
-                    if (ipAddress != null && !"".equals(ipAddress)) {
-                        OkHttpClient client = new OkHttpClient.Builder()
-                            .cookieJar(cookieJar)
-                            .dns(dns)
-                            .build();
-                        FormBody formBody = new FormBody.Builder()
-                            .add("accessKeySecret", accessKeySecret)
-                            .build();
-
-                        Request request = new Request.Builder()
-                            .url(okhttpLoginUrl)
-                            .post(formBody)
-                            .build();
-
+                // 先开展解析工作
+                hostName = loginURL.getHost();
+                HostName tmpHostName = new HostName(hostName);
+                if (tmpHostName.isAddress()) {
+                    ipAddress = tmpHostName.getHost();
+                } else {
+                    // 遍历 5 遍 DNS 列表，反复查询 DNS ，应付极端缓慢的海外域名解析
+                    boolean isOk = false;
+                    for (int i = 0; !isOk && i < 5; i++) {
                         try {
-                            Response loginResponse = client.newCall(request).execute();
-                            // 服务端返回的结果
-                            if (loginResponse.isSuccessful()) {
-                                try {
-                                    String loginResponsePayload = loginResponse.body().string();
-                                    JsonApiResponseData responseData = new Gson().fromJson(loginResponsePayload, JsonApiResponseData.class);
-                                    if (responseData.isSuccess()) {
-                                        URL connectURL = new URL(loginURL, "./ws-connect");
-                                        String tmpConnectURLInText = connectURL.toString();
-                                        if (tmpConnectURLInText.startsWith("http")) {
-                                            connectUrlInText = "ws" + tmpConnectURLInText.substring(4);
-                                        } else {
-                                            connectUrlInText = tmpConnectURLInText;
-                                        }
-                                    } else {
-                                        postNotification("WebSocket登录失败！调试消息：" + loginResponsePayload);
-                                    }
-                                } catch (JsonSyntaxException e) {
-                                    postNotification("WebSocket登录请求回执内容解析失败！调试消息：" + e.getMessage());
+                            for (Dns item : okHttpDnsArray) {
+                                records = item.lookup(tmpHostName.getHost());
+
+                                if (records.size() > 0) {
+                                    ipAddress = records.get(0).getHostAddress();
+                                    isOk = true;
+                                    break;
                                 }
-                            } else {
-                                postNotification("WebSocket登录请求失败！调试消息：" + loginResponse.body());
                             }
-                            loginResponse.close();
                         } catch (IOException e) {
-                            postNotification("WebSocket连接失败！调试消息：" + e.getMessage());
+                            e.printStackTrace();
                         }
                     }
-                } catch (MalformedURLException e) {
-                    postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
+                    if (records.size() == 0) {
+                        postNotification("WebSocket登录URL域名解析失败！");
+                    } else {
+                        okhttpDns = getCachedOkHttpDns(hostName, records);
+                    }
                 }
-            }
 
-            // 走到这一步，前面流程务必登录成功
-            // 尝试连接 WebSocket
-            if (!"".equals(connectUrlInText)) {
-                OkHttpClient websocketOkHttpClient = new OkHttpClient.Builder()
-                    .callTimeout(3, TimeUnit.MINUTES)
-                    .pingInterval(40, TimeUnit.SECONDS)
-                    .cookieJar(cookieJar)
-                    .dns(dns)
-                    .build();
+                // 尝试登录、拿到 Cookie
+                if (ipAddress != null && !"".equals(ipAddress)) {
+                    OkHttpClient client = new OkHttpClient.Builder()
+                        .cookieJar(cookieJar)
+                        .dns(okhttpDns)
+                        .build();
+                    FormBody formBody = new FormBody.Builder()
+                        .add("accessKeySecret", accessKeySecret)
+                        .build();
 
-                Request request = new Request.Builder()
-                    .url(connectUrlInText)
-                    .build();
+                    Request request = new Request.Builder()
+                        .url(okhttpLoginUrl)
+                        .post(formBody)
+                        .build();
 
-                WebSocketListener webSocketListener = new WebSocketListener() {
-                    @Override
-                    public void onClosed(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
-                        websocketConnected = false;
-                        super.onClosed(webSocket, code, reason);
-                    }
-
-                    @Override
-                    public void onClosing(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
-                        super.onClosing(webSocket, code, reason);
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
-                        super.onFailure(webSocket, t, response);
-                    }
-
-                    @Override
-                    public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
-                        try {
-                            WebSocketMessage message = new Gson().fromJson(text, WebSocketMessage.class);
-                            if (WebSocketMessage.Type.request.equals(message.getMessageType())) {
-                                JsonObject jsonObject = new Gson().toJsonTree(message.getPayload()).getAsJsonObject();
-                                if ("sendSms".equals(jsonObject.get("operation").getAsString())) {
-                                    SmsTaskRequestObject requestObject = new Gson().fromJson(jsonObject, SmsTaskRequestObject.class);
-                                    smSender.sendMessage(requestObject.data.getPhoneNumber(), requestObject.data.getSmsContent());
+                    try {
+                        Response loginResponse = client.newCall(request).execute();
+                        // 服务端返回的结果
+                        if (loginResponse.isSuccessful()) {
+                            try {
+                                String loginResponsePayload = loginResponse.body().string();
+                                JsonApiResponseData responseData = new Gson().fromJson(loginResponsePayload, JsonApiResponseData.class);
+                                if (responseData.isSuccess()) {
+                                    return new OkHttpClient.Builder()
+                                        // .callTimeout(60, TimeUnit.SECONDS)
+                                        .readTimeout(5, TimeUnit.SECONDS)
+                                        .writeTimeout(5, TimeUnit.SECONDS)
+                                        .connectTimeout(20, TimeUnit.SECONDS)
+                                        .pingInterval(3, TimeUnit.SECONDS)
+                                        .cookieJar(cookieJar)
+                                        .dns(okhttpDns)
+                                        .build();
+                                } else {
+                                    postNotification("WebSocket登录失败！调试消息：" + loginResponsePayload);
                                 }
+                            } catch (JsonSyntaxException e) {
+                                postNotification("WebSocket登录请求回执内容解析失败！调试消息：" + e.getMessage());
                             }
-                        } catch (Exception e) {
-                            postNotification("收到消息，但解析发生错误。调试消息：" + e.getMessage());
+                        } else {
+                            postNotification("WebSocket登录请求失败！调试消息：" + loginResponse.body());
                         }
+                        loginResponse.close();
+                    } catch (IOException e) {
+                        postNotification("WebSocket 连接失败！调试消息：" + e.getMessage());
+                        webSocketStatusEventAmplifier.onDisconnected(null, null, e, null);
                     }
-
-                    @Override
-                    public void onMessage(@NonNull WebSocket webSocket, @NonNull ByteString bytes) {
-                        super.onMessage(webSocket, bytes);
-                    }
-
-                    @Override
-                    public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
-                        websocketConnected = true;
-                        super.onOpen(webSocket, response);
-                    }
-                };
-
-                try {
-                    ws = websocketOkHttpClient.newWebSocket(request, webSocketListener);
-                    websocketInitialized = true;
-                    postNotification("WebSocket 连接成功！");
-                } catch (Exception e) {
-                    postNotification("WebSocket 连接失败！调试消息：" + e.getMessage());
                 }
-
+            } catch (MalformedURLException e) {
+                postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
             }
-        });
-        thread.start();
+        }
 
-        return thread;
+        return null;
     }
 
-    public void closeWebSocket() {
-        if (ws != null && websocketInitialized) {
-            boolean shutDownFlag = ws.close(1000, "manual close");
-            postNotification("WebSocket 关闭" + (shutDownFlag ? "成功" : "失败"));
-            ws.cancel();
-            ws = null;
+    private Request okHttpWebsocketRequestGenerator() {
+        SharedPreferences sharedPreferences = getSharedPreferences();
+        String loginUrlInText = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL, "");
+        String connectUrlInText = "";
+
+        try {
+            URL connectURL = new URL(new URL(loginUrlInText), "./ws-connect");
+            String tmpConnectURLInText = connectURL.toString();
+            if (tmpConnectURLInText.startsWith("http")) {
+                connectUrlInText = "ws" + tmpConnectURLInText.substring(4);
+            } else {
+                connectUrlInText = tmpConnectURLInText;
+            }
+
+            return new Request.Builder().url(connectUrlInText).build();
+        } catch (MalformedURLException e) {
+            postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
         }
+
+        return null;
+    }
+
+    public void initWebSocket() {
+        synchronized (TAG) {
+            recreatingWebSocket = true;
+            if (isClosing) {
+                recreatingWebSocket = false;
+                return;
+            }
+        }
+        new Thread(() -> {
+            destroyWebSocket();
+
+            OkHttpClient client = okHttpWebsocketClientGenerator();
+            Request request = okHttpWebsocketRequestGenerator();
+
+            WebSocketListener webSocketListener = new WebSocketListener() {
+                @Override
+                public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
+                    try {
+                        WebSocketMessage message = new Gson().fromJson(text, WebSocketMessage.class);
+                        if (WebSocketMessage.Type.request.equals(message.getMessageType())) {
+                            JsonObject jsonObject = new Gson().toJsonTree(message.getPayload()).getAsJsonObject();
+                            if ("sendSms".equals(jsonObject.get("operation").getAsString())) {
+                                SmsTaskRequestObject requestObject = new Gson().fromJson(jsonObject, SmsTaskRequestObject.class);
+                                smSender.sendMessage(requestObject.data.getPhoneNumber(), requestObject.data.getSmsContent());
+                            }
+                        }
+                    } catch (Exception e) {
+                        postNotification("收到消息，但解析发生错误。调试消息：" + e.getMessage());
+                    }
+                }
+
+                @Override
+                public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
+                    if (response != null && 403 == response.code()) {
+                        postNotification("WebsSocket 认证过期，即将重新登录。");
+                        initWebSocket();
+                    }
+                }
+
+                @Override
+                public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
+                    if (403 == response.code()) {
+                        postNotification("WebsSocket 认证过期，即将重新登录。");
+                        initWebSocket();
+                    }
+                }
+            };
+
+            if (client != null && request != null) {
+                WebSocketManager webSocketManager = new WebSocketManager(
+                    client,
+                    request,
+                    webSocketStatusEventAmplifier
+                );
+                webSocketManager.setExtraWebSocketListener(webSocketListener);
+                // 网络中断，重连 5 分钟，尝试 3000 次，每次间隔 100 毫秒
+                webSocketManager.setMaxRetry(3000);
+                webSocketManager.setReconnectInterval(100);
+                webSocketManager.connect();
+
+                this.webSocketManager = webSocketManager;
+            }
+
+            recreatingWebSocket = false;
+        }, WebsocketService.class.getName() + "_initWebSocket").start();
+    }
+
+    public void destroyWebSocket() {
+        if (isWebsocketInitialized()) {
+            webSocketManager.destroy();
+            webSocketManager = null;
+        }
+    }
+
+
+    private int postNotification(String content) {
+        int requestCode = notificationIdGenerator.generate();
+
+        // 设置取消后的动作
+        Intent intent = new Intent(CLEAR_NOTIFICATION_ACTION);
+        intent.putExtra("sequence", requestCode);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT);
+
+        // 初始化 notification
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("核心服务")    // 设置标题
+            .setContentText(content)    // 设置通知文字
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
+            .setSmallIcon(R.drawable.baseline_contact_mail_24)   // 设置左边的小图标
+            // .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.miyamizu_mitsuha_head))  // 设置大图标
+            // // .setColor(Color.parseColor("#ff0000"))
+            .setContentIntent(pendingIntent)  // 设置点击通知之后 进入相关页面(此处进入NotificationActivity类，执行oncreat方法打印日志)
+            .setOngoing(false)
+            .setAutoCancel(true)   // 设置点击通知后 通知通知栏不显示 （但实测不行，目前使用 pendingIntent 回调来删除通知）
+            .build();
+
+        getNotificationManager().notify(CHANNEL_ID, requestCode, notification);
+
+        return requestCode;
+    }
+
+    @Override
+    public void onRequestPermissionResult(int requestCode, int grantResult) {
+        if (grantResult == PackageManager.PERMISSION_GRANTED) {
+            initSmSender();
+        }
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL.equals(key)) {
+            String secret = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET, null);
+            if (secret != null) {
+                initWebSocket();
+            }
+        }
+        if (MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET.equals(key)) {
+            String url = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL, null);
+            if (url != null) {
+                initWebSocket();
+            }
+        }
+    }
+
+    // 简单通过时区判断是否在大陆
+    public boolean isInChina() {
+        try {
+            TimeZone zone = TimeZone.getDefault();
+            String id = zone.getID();
+            boolean result;
+            switch (id) {
+                case "Asia/Shanghai":
+                case "Asia/Chongqing":
+                case "Asia/Harbin":
+                case "Asia/Urumqi":
+                    result = true;
+                    break;
+                default:
+                    result = false;
+                    break;
+            }
+
+            return result;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private DnsOverHttps generateOkHttpDns(String urlInText) {
+        return new DnsOverHttps.Builder().client(okHttpBootstrapClient).url(HttpUrl.get(urlInText)).build();
+    }
+
+
+    public void addListener(WebSocketManager.StatusListener listener) {
+        webSocketStatusEventAmplifier.addListener(listener);
+    }
+
+    public boolean removeListener(WebSocketManager.StatusListener listener) {
+        return webSocketStatusEventAmplifier.removeListener(listener);
     }
 
 
@@ -476,10 +621,9 @@ public class WebsocketService extends Service implements
         Log.i(TAG, "onDestroy...");
         synchronized (TAG) {
             isClosing = true;
-            if (websocketInitialized) {
-                closeWebSocket();
-            }
         }
+        destroyWebSocket();
+        webSocketStatusEventAmplifier.clearListener();
 
         context.unregisterReceiver(broadcastReceiver);
         getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
@@ -517,97 +661,38 @@ public class WebsocketService extends Service implements
         return START_NOT_STICKY;
     }
 
-    private void initSmSender() {
-        if (context.getMyShizukuContext().refreshPermissionStatus()) {
+    private class WebSocketStatusEventAmplifier extends BaseEventAmplifier<WebSocketManager.StatusListener> implements WebSocketManager.StatusListener {
+
+        @Override
+        public void onConnected() {
             try {
-                if (smSender != null) {
-                    smSender.close();
-                }
-                smSender = new SmSender(context);
-                postNotification("创建短信服务成功！");
-            } catch (ReflectiveOperationException | RemoteException | IOException e) {
-                postNotification("创建短信服务失败！原因：" + e.getMessage());
-                e.printStackTrace();
-            }
-        } else {
-            postNotification("创建短信服务失败！原因：" + "Shizuku 未授权");
-        }
-    }
-
-    private int postNotification(String content) {
-        int requestCode = notificationIdGenerator.generate();
-
-        // 设置取消后的动作
-        Intent intent = new Intent(CLEAR_NOTIFICATION_ACTION);
-        intent.putExtra("sequence", requestCode);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT);
-
-        // 初始化 notification
-        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("核心服务")    // 设置标题
-            .setContentText(content)    // 设置通知文字
-            .setSmallIcon(R.drawable.baseline_contact_mail_24)   // 设置左边的小图标
-            .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.miyamizu_mitsuha_head))  // 设置大图标
-            // .setColor(Color.parseColor("#ff0000"))
-            .setContentIntent(pendingIntent)  // 设置点击通知之后 进入相关页面(此处进入NotificationActivity类，执行oncreat方法打印日志)
-            .setOngoing(false)
-            .setAutoCancel(true)   // 设置点击通知后 通知通知栏不显示 （但实测不行，目前使用 pendingIntent 回调来删除通知）
-            .build();
-
-        getNotificationManager().notify(CHANNEL_ID, requestCode, notification);
-
-        return requestCode;
-    }
-
-    @Override
-    public void onRequestPermissionResult(int requestCode, int grantResult) {
-        if (grantResult == PackageManager.PERMISSION_GRANTED) {
-            initSmSender();
-        }
-    }
-
-    @Override
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL.equals(key)) {
-            String secret = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET, null);
-            if (secret != null) {
-                reinitWebSocket();
+                lock.readLock().lock();
+                listenerSet.keySet().parallelStream().forEach(WebSocketManager.StatusListener::onConnected);
+            } finally {
+                lock.readLock().unlock();
             }
         }
-        if (MyApplication.SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET.equals(key)) {
-            String url = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL, null);
-            if (url != null) {
-                reinitWebSocket();
+
+        @Override
+        public void onDisconnected(@Nullable String reason, @Nullable Integer code, @Nullable Throwable throwable, @Nullable Response response) {
+            try {
+                lock.readLock().lock();
+                listenerSet.keySet().parallelStream().forEach(listener -> listener.onDisconnected(reason, code, throwable, response));
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        @Override
+        public void onRetryMaxReached() {
+            try {
+                lock.readLock().lock();
+                listenerSet.keySet().parallelStream().forEach(WebSocketManager.StatusListener::onRetryMaxReached);
+            } finally {
+                lock.readLock().unlock();
             }
         }
     }
 
-    // 简单通过时区判断是否在大陆
-    public boolean isInChina() {
-        try {
-            TimeZone zone = TimeZone.getDefault();
-            String id = zone.getID();
-            boolean result;
-            switch (id) {
-                case "Asia/Shanghai":
-                case "Asia/Chongqing":
-                case "Asia/Harbin":
-                case "Asia/Urumqi":
-                    result = true;
-                    break;
-                default:
-                    result = false;
-                    break;
-            }
-
-            return result;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private DnsOverHttps generateOkHttpDns(String urlInText) {
-        return new DnsOverHttps.Builder().client(okHttpBootstrapClient).url(HttpUrl.get(urlInText)).build();
-    }
 
 }

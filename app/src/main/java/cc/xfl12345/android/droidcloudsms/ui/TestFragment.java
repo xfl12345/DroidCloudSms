@@ -11,15 +11,19 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
+import cc.xfl12345.android.droidcloudsms.WebsocketService;
 import cc.xfl12345.android.droidcloudsms.databinding.FragmentTestBinding;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.SmContent;
 import cc.xfl12345.android.droidcloudsms.model.SmSender;
+import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionListener;
 
-public class TestFragment extends Fragment {
+public class TestFragment extends Fragment implements WebSocketServiceConnectionListener {
     private FragmentTestBinding binding;
 
     private MyApplication context;
+
+    private WebsocketService websocketService = null;
 
     public TestFragment() {
         // Required empty public constructor
@@ -50,17 +54,40 @@ public class TestFragment extends Fragment {
             smContent.setPhoneNumber(phoneNumber);
 
             new Thread(() -> {
-                if (context.isConnected2WebsocketService() && context.getWebsocketService().isSmsReady()) {
-                    SmSender smSender = context.getWebsocketService().getSmSender();
+                if (websocketService != null && websocketService.isSmsReady()) {
+                    SmSender smSender = websocketService.getSmSender();
                     smSender.sendMessage(smContent.getPhoneNumber(), smContent.getContent());
                 } else {
                     NotificationUtils.postNotification(context, "测试发送短信失败", "短信服务未工作");
                 }
-            }).start();
+            }, TestFragment.class.getName() + "_sending_message").start();
         });
 
         // Inflate the layout for this fragment
         return view;
+    }
+
+
+    @Override
+    public void onResume() {
+        context.addWebSocketServiceConnectionListener(this);
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        context.removeWebSocketServiceConnectionListener(this);
+        super.onPause();
+    }
+
+    @Override
+    public void onServiceConnected(WebsocketService service) {
+        websocketService = service;
+    }
+
+    @Override
+    public void onServiceDisconnected() {
+        websocketService = null;
     }
 
 }

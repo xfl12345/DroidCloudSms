@@ -3,6 +3,7 @@ package cc.xfl12345.android.droidcloudsms.ui;
 import android.graphics.Color;
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.fragment.app.Fragment;
 
@@ -16,15 +17,52 @@ import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
 import cc.xfl12345.android.droidcloudsms.WebsocketService;
 import cc.xfl12345.android.droidcloudsms.databinding.FragmentHomeBinding;
+import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionListener;
+import cc.xfl12345.android.droidcloudsms.model.ws.WebSocketManager;
+import okhttp3.Response;
 
-public class HomeFragment extends Fragment {
+public class HomeFragment extends Fragment implements WebSocketServiceConnectionListener {
 
     private MyApplication context;
+
+    private FragmentHomeBinding binding;
+
+    private WebsocketService websocketService = null;
+
+    private WebSocketManager.StatusListener webSocketStatusListener = null;
+
+    private ButtonStatus buttonStatus = ButtonStatus.PENDING;
+
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         context = (MyApplication) requireContext().getApplicationContext();
+        webSocketStatusListener = new WebSocketManager.StatusListener() {
+            @Override
+            public void onConnected() {
+                HomeFragment.this.updateButton(isAllOK() ? ButtonStatus.OK : ButtonStatus.FAILED, "");
+            }
+
+            @Override
+            public void onDisconnected(@Nullable String reason, @Nullable Integer code, @Nullable Throwable throwable, @Nullable Response response) {
+                if (websocketService != null && websocketService.isRecreatingWebSocket()) {
+                    return;
+                }
+                HomeFragment.this.updateButton(isAllOK() ? ButtonStatus.OK : ButtonStatus.FAILED, "");
+            }
+
+            @Override
+            public void onRetryMaxReached() {
+                HomeFragment.this.updateButton(isAllOK() ? ButtonStatus.OK : ButtonStatus.FAILED, "");
+            }
+
+            @Override
+            public void onReconnecting() {
+                HomeFragment.this.updateButton(ButtonStatus.PENDING, "WebSocket 正在重连");
+            }
+        };
     }
 
     @Override
@@ -33,50 +71,106 @@ public class HomeFragment extends Fragment {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
-        FragmentHomeBinding binding = FragmentHomeBinding.bind(view);
+        binding = FragmentHomeBinding.bind(view);
 
         MaterialButton button = binding.fragmentHomeButton;
         button.setOnClickListener(v -> {
-            button.setBackgroundColor(Color.YELLOW);
-            button.setIcon(AppCompatResources.getDrawable(context, R.drawable.baseline_360_24));
-            button.setText("正在重新初始化WebSocket");
             new Thread(() -> {
                 try {
-                    Thread thread = context.getWebsocketService().reinitWebSocket();
-                    thread.join();
-                    updateButton(button);
+                    updateButton(ButtonStatus.PENDING, "正在重新初始化WebSocket");
+                    if (websocketService != null) {
+                        websocketService.initWebSocket();
+                    } else {
+                        updateButton(ButtonStatus.FAILED, "");
+                    }
                 } catch (Exception e) {
                     // ignore
                 }
-            }).start();
+            }, HomeFragment.class.getName() + "_button_click").start();
         });
 
-        updateButton(button);
+        updateButton(ButtonStatus.PENDING, "正在初始化UI");
 
         return view;
     }
 
     public boolean isAllOK() {
-        boolean flag = false;
-        if (context.isConnected2WebsocketService()) {
-            WebsocketService websocketService = context.getWebsocketService();
-            flag = websocketService.isSmsReady() && websocketService.isWebsocketConnected();
-        }
-
-        return flag;
+        return websocketService != null && websocketService.isSmsReady() && websocketService.isWebSocketConnected();
     }
 
-    public void updateButton(MaterialButton button) {
+    public void updateButton(ButtonStatus status, String pendingMessage) {
+        HomeFragment.this.buttonStatus = status;
+        MaterialButton button = binding.fragmentHomeButton;
         button.post(() -> {
-            context = ((MyApplication) button.getContext().getApplicationContext());
-
-            boolean ok = isAllOK();
-            button.setBackgroundColor(ok ? Color.GREEN : Color.RED);
-            button.setIcon(AppCompatResources.getDrawable(
-                context,
-                ok ? R.drawable.baseline_check_24 : R.drawable.baseline_close_24
-            ));
-            button.setText(ok ? "工作正常" : "未工作");
+            switch (status) {
+                case PENDING:
+                    button.setBackgroundColor(Color.YELLOW);
+                    button.setIcon(AppCompatResources.getDrawable(context, R.drawable.baseline_360_24));
+                    button.setText(pendingMessage);
+                    break;
+                case OK:
+                    button.setBackgroundColor(Color.GREEN);
+                    button.setIcon(AppCompatResources.getDrawable(
+                        context,
+                        R.drawable.baseline_check_24
+                    ));
+                    button.setText("工作正常");
+                    break;
+                case FAILED:
+                    button.setBackgroundColor(Color.RED);
+                    button.setIcon(AppCompatResources.getDrawable(
+                        context,
+                        R.drawable.baseline_close_24
+                    ));
+                    button.setText("未工作");
+                    break;
+            }
         });
+    }
+
+
+    @Override
+    public void onResume() {
+        context.addWebSocketServiceConnectionListener(this);
+        super.onResume();
+        if (ButtonStatus.PENDING.equals(buttonStatus)) {
+            updateButton(isAllOK() ? ButtonStatus.OK : ButtonStatus.FAILED, "");
+        }
+        // new Thread(() -> {
+        //     try {
+        //         Thread.sleep(5000);
+        //     } catch (InterruptedException e) {
+        //         // ignore
+        //     }
+        //     if (websocketService == null || (!websocketService.isWebSocketReconnecting() && !websocketService.isRecreatingWebSocket())) {
+        //         updateButton(isAllOK() ? ButtonStatus.OK : ButtonStatus.FAILED, "");
+        //     }
+        // }, HomeFragment.class.getName() + "_on_resume_timeout_recheck").start();
+    }
+
+    @Override
+    public void onPause() {
+        if (websocketService != null) {
+            websocketService.removeListener(webSocketStatusListener);
+        }
+        context.removeWebSocketServiceConnectionListener(this);
+        super.onPause();
+    }
+
+    @Override
+    public void onServiceConnected(WebsocketService service) {
+        websocketService = service;
+        websocketService.addListener(webSocketStatusListener);
+    }
+
+    @Override
+    public void onServiceDisconnected() {
+        websocketService = null;
+    }
+
+    enum ButtonStatus {
+        PENDING,
+        OK,
+        FAILED
     }
 }

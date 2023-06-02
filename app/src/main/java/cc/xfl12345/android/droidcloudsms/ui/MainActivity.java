@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
         binding.navViewFooterBoxButtonExitApp.setOnClickListener((view) -> {
             new Thread(() -> {
                 ((MyApplication) getApplication()).justExit();
-            }).start();
+            }, MainActivity.class.getName() + "_navigation_view_exit_button_on_click").start();
         });
 
         mAppBarConfiguration = new AppBarConfiguration.Builder(
@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
                 bundle.putBoolean("needJumpBack", true);
                 drawerLayout.post(() -> navController.navigate(R.id.nav_permission_manager, bundle));
             }
-        }).start();
+        }, MainActivity.class.getName() + "_recheck_all_permission_status").start();
     }
 
     @Override
