@@ -133,19 +133,9 @@ public class HomeFragment extends Fragment implements WebSocketServiceConnection
     public void onResume() {
         context.addWebSocketServiceConnectionListener(this);
         super.onResume();
-        if (ButtonStatus.PENDING.equals(buttonStatus)) {
+        if (websocketService == null || ButtonStatus.PENDING.equals(buttonStatus)) {
             updateButton(isAllOK() ? ButtonStatus.OK : ButtonStatus.FAILED, "");
         }
-        // new Thread(() -> {
-        //     try {
-        //         Thread.sleep(5000);
-        //     } catch (InterruptedException e) {
-        //         // ignore
-        //     }
-        //     if (websocketService == null || (!websocketService.isWebSocketReconnecting() && !websocketService.isRecreatingWebSocket())) {
-        //         updateButton(isAllOK() ? ButtonStatus.OK : ButtonStatus.FAILED, "");
-        //     }
-        // }, HomeFragment.class.getName() + "_on_resume_timeout_recheck").start();
     }
 
     @Override
