@@ -27,11 +27,16 @@
     <string name="exit_app">退出APP</string>
     <string name="sms_status">短信服务状态</string>
 
+    <string name="sp_key_websocket_server_login_url">websocketServerLoginURL</string>
+    <string name="sp_key_websocket_server_access_key_secret">websocketServerAccessKeySecret</string>
 
     <string name="setting_header_websocket">WebSocket</string>
     <string name="setting_title_websocket_server_login_url">WS登录URL</string>
     <string name="setting_title_websocket_server_access_key_secret">口令</string>
     <string name="ws_status">WebSocket状态</string>
+
+    <string name="setting_header_sim">SIM</string>
+
 
     <string name="super_huge_string">
         abcdef1234567890abcdef1234567890

@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="cc.xfl12345.android.droidcloudsms">
 
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:remove="android:maxSdkVersion" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />

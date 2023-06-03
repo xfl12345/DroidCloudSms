@@ -19,6 +19,9 @@ public class MySms {
 
     private Method methodSendMultipartTextForSubscriber;
 
+    public SystemServiceBinderHelper getProxyHelper() {
+        return serviceBinderHelper;
+    }
 
     public MySms() throws ReflectiveOperationException, RemoteException {
         serviceBinderHelper = new SystemServiceBinderHelper("isms");

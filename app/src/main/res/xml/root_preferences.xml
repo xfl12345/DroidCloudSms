@@ -3,14 +3,24 @@
     <PreferenceCategory app:title="@string/setting_header_websocket">
 
         <EditTextPreference
-            app:key="websocketServerLoginURL"
+            app:icon="@drawable/baseline_link_24"
+            app:key="@string/sp_key_websocket_server_login_url"
             app:title="@string/setting_title_websocket_server_login_url"
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
-            app:key="websocketServerAccessKeySecret"
+            app:icon="@drawable/baseline_key_24"
+            app:key="@string/sp_key_websocket_server_access_key_secret"
             app:title="@string/setting_title_websocket_server_access_key_secret"
             app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/setting_header_sim">
+        <ListPreference
+            app:icon="@drawable/baseline_sim_card_24"
+            app:key="smsSimSubscriptionId"
+            app:title="发短信的SIM卡" />
 
     </PreferenceCategory>
 

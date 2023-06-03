@@ -3,27 +3,62 @@ package cc.xfl12345.android.droidcloudsms.model;
 import static android.telephony.SmsManager.RESULT_NO_DEFAULT_SMS_APP;
 
 import android.app.PendingIntent;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.RemoteException;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.Log;
+
+import androidx.preference.PreferenceManager;
 
 import com.android.internal.telephony.IIntegerConsumer;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MySmsManager {
+import cc.xfl12345.android.droidcloudsms.MyApplication;
+import jakarta.annotation.PreDestroy;
+
+public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChangeListener {
     public static final String TAG = "MySmsManager";
 
     private static final int RESULT_REMOTE_EXCEPTION = 32;
 
-    private int mSubId = Integer.MAX_VALUE;
+    private Integer mSubId = null;
 
-    private static MySms mySms = null;
+    private MySms mySms = null;
 
-    public MySmsManager() throws ReflectiveOperationException, RemoteException {
+    private MyISub myISub = null;
+
+    private SharedPreferences sharedPreferences;
+
+    public MySms getMySms() {
+        return mySms;
+    }
+
+    public MyISub getMyISub() {
+        return myISub;
+    }
+
+    public MySmsManager(Context context) throws ReflectiveOperationException, RemoteException {
         mySms = new MySms();
+        myISub = new MyISub();
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        mSubId = Integer.valueOf(sharedPreferences.getString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(Integer.MAX_VALUE)));
+        sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+    }
+
+    @PreDestroy
+    public void destroy() {
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID.equals(key)) {
+            mSubId = Integer.valueOf(sharedPreferences.getString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(Integer.MAX_VALUE)));
+        }
     }
 
     private interface SubscriptionResolverResult {
@@ -58,14 +93,14 @@ public class MySmsManager {
      * Returns the ISms service, or throws an UnsupportedOperationException if
      * the service does not exist.
      */
-    private static MySms getISmsServiceOrThrow() {
+    private MySms getISmsServiceOrThrow() {
         if (mySms == null) {
             throw new UnsupportedOperationException("Sms is not supported");
         }
         return mySms;
     }
 
-    private static MySms getISmsService() {
+    private MySms getISmsService() {
         return mySms;
     }
 
@@ -83,8 +118,9 @@ public class MySmsManager {
      * subscriptions and and no default is set ("ask every time") by the user.
      */
     public int getSubscriptionId() {
-        return (mSubId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
-                ? getISmsServiceOrThrow().getPreferredSmsSubscription() : mSubId;
+        return (mSubId == Integer.MAX_VALUE)
+            ? getISmsServiceOrThrow().getPreferredSmsSubscription()
+            : mSubId;
     }
 
     private void sendResolverResult(SubscriptionResolverResult resolverResult, int subId,

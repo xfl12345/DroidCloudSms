@@ -9,7 +9,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +36,8 @@ public class SystemServiceBinderHelper {
     // protected Object serviceInstance = null;
 
     protected Map<String, Map<MethodParamArray, Method>> serviceClassDeclaredMethods;
+
+    protected List<Method> serviceClassDeclaredMethodsOriginList;
 
     protected Map<String, Map<MethodParamArray, Method>> serviceStubClassDeclaredMethods;
 
@@ -78,23 +83,25 @@ public class SystemServiceBinderHelper {
 
         serviceStubClassConstructors = new ConcurrentHashMap<>();
         serviceStubClassDeclaredMethods = new ConcurrentHashMap<>();
-        addMethods2Map(serviceStubClass, serviceStubClassDeclaredMethods, serviceStubClassConstructors);
+        initCache(serviceStubClass, serviceStubClassDeclaredMethods, serviceStubClassConstructors);
 
         serviceStubClassConstructors = new ConcurrentHashMap<>();
         serviceClassDeclaredMethods = new ConcurrentHashMap<>();
-        addMethods2Map(serviceClass, serviceClassDeclaredMethods, serviceClassConstructors);
+        initCache(serviceClass, serviceClassDeclaredMethods, serviceClassConstructors);
 
         asInterfaceMethod = getServiceStubDeclaredMethod("asInterface", IBinder.class);
     }
 
-    protected void addMethods2Map(
-            Class<?> clazz,
-            Map<String, Map<MethodParamArray, Method>> methodMap,
-            Map<String, Map<MethodParamArray, Constructor<?>>> constructorMap) {
-        Stream<Executable> stream = methodMap instanceof ConcurrentMap ?
-                HiddenApiBypassProxy.getDeclaredMethods(clazz).parallelStream() :
-                HiddenApiBypassProxy.getDeclaredMethods(clazz).stream();
+    protected void initCache(
+        Class<?> clazz,
+        Map<String, Map<MethodParamArray, Method>> methodMap,
+        Map<String, Map<MethodParamArray, Constructor<?>>> constructorMap) {
+        List<Executable> executableList = HiddenApiBypassProxy.getDeclaredMethods(clazz);
+        serviceClassDeclaredMethodsOriginList = new ArrayList<>(executableList.size());
 
+        Stream<Executable> stream = methodMap instanceof ConcurrentMap
+            ? executableList.parallelStream()
+            : executableList.stream();
         stream.forEach(item -> {
             if (item instanceof Constructor) {
                 Constructor<?> constructor = (Constructor<?>) item;
@@ -106,6 +113,8 @@ public class SystemServiceBinderHelper {
                 Objects.requireNonNull(methods).put(new MethodParamArray(constructor.getParameterTypes()), (Constructor<?>) item);
             } else if (item instanceof Method) {
                 Method method = (Method) item;
+                serviceClassDeclaredMethodsOriginList.add(method);
+
                 Map<MethodParamArray, Method> methods = methodMap.putIfAbsent(method.getName(), new ConcurrentHashMap<>());
                 if (methods == null) {
                     methods = methodMap.get(method.getName());
@@ -166,6 +175,10 @@ public class SystemServiceBinderHelper {
             }
             return method.invoke(getServiceInstance(), args);
         }
+    }
+
+    public List<Method> getServiceClassDeclaredMethods() {
+        return Collections.unmodifiableList(serviceClassDeclaredMethodsOriginList);
     }
 
     public static class MethodParamArray implements Comparable<MethodParamArray> {

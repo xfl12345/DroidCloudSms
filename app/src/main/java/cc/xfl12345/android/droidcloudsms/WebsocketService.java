@@ -303,11 +303,11 @@ public class WebsocketService extends Service implements
         if (context.getMyShizukuContext().refreshPermissionStatus()) {
             try {
                 if (smSender != null) {
-                    smSender.close();
+                    smSender.destroy();
                 }
                 smSender = new SmSender(context);
                 postNotification("创建短信服务成功！");
-            } catch (ReflectiveOperationException | RemoteException | IOException e) {
+            } catch (ReflectiveOperationException | RemoteException e) {
                 postNotification("创建短信服务失败！原因：" + e.getMessage());
                 e.printStackTrace();
             }
@@ -630,11 +630,7 @@ public class WebsocketService extends Service implements
         Shizuku.removeRequestPermissionResultListener(this);
 
         if (smSender != null) {
-            try {
-                smSender.close();
-            } catch (IOException e) {
-                // ignore
-            }
+            smSender.destroy();
         }
 
         stopForeground(true);// 停止前台服务--参数：表示是否移除之前的通知

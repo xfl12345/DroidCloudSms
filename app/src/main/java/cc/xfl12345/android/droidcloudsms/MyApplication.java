@@ -1,5 +1,6 @@
 package cc.xfl12345.android.droidcloudsms;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.Application;
 import android.app.Notification;
@@ -42,6 +43,9 @@ public class MyApplication extends Application {
     public static final String SP_KEY_WEBSOCKET_SERVER_LOGIN_URL = "websocketServerLoginURL";
 
     public static final String SP_KEY_WEBSOCKET_SERVER_ACCESS_KEY_SECRET = "websocketServerAccessKeySecret";
+
+    public static final String SP_KEY_SMS_SIM_SUBSCRIPTION_ID = "smsSimSubscriptionId";
+
 
     private Context context;
 
@@ -89,13 +93,18 @@ public class MyApplication extends Application {
         myShizukuContext = new MyShizukuContext(context);
 
         androidPermissionList = new ArrayList<>(10);
-        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.ACCESS_NETWORK_STATE", "获取网络状态权限"));
-        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.INTERNET", "联网权限"));
-        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.VIBRATE", "震动权限"));
-        androidPermissionList.add(new AndroidPermissionNamePair("android.permission.FOREGROUND_SERVICE", "前台服务权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.READ_PHONE_STATE, "获取SIM卡状态权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.ACCESS_NETWORK_STATE, "获取网络状态权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.INTERNET, "联网权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.VIBRATE, "震动权限"));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.FOREGROUND_SERVICE, "前台服务权限"));
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.POST_NOTIFICATIONS, "发送通知权限"));
+        }
         androidPermissionList.add(new AndroidPermissionNamePair(Permission.NOTIFICATION_SERVICE, "通知栏权限"));
-        androidPermissionList.add(new AndroidPermissionNamePair(Permission.POST_NOTIFICATIONS, "发送通知权限"));
-        androidPermissionList.add(new AndroidPermissionNamePair(Permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化权限"));
+        androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "忽略电池优化权限"));
 
         notificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         // 注册通用通知

@@ -2,7 +2,6 @@ package cc.xfl12345.android.droidcloudsms.model;
 
 import static android.content.Context.NOTIFICATION_SERVICE;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -17,12 +16,10 @@ import android.os.RemoteException;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
-import java.io.Closeable;
-import java.io.IOException;
-
 import cc.xfl12345.android.droidcloudsms.R;
+import jakarta.annotation.PreDestroy;
 
-public class SmSender implements Closeable {
+public class SmSender {
     public static final String CHANNEL_ID = "SmSender";
 
     public static final String CHANNEL_NAME = "短信服务";
@@ -48,7 +45,7 @@ public class SmSender implements Closeable {
 
     public SmSender(Context context) throws ReflectiveOperationException, RemoteException {
         this.context = context;
-        smsManager = new MySmsManager();
+        smsManager = new MySmsManager(context);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             NotificationManager notificationManager = getNotificationManager();
@@ -168,9 +165,10 @@ public class SmSender implements Closeable {
         context.unregisterReceiver(clearNotificationActionBroadcastReceiver);
     }
 
-    @Override
-    public void close() throws IOException {
+    @PreDestroy
+    public void destroy() {
         unregisterReceiver();
+        smsManager.destroy();
     }
 
 }
