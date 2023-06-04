@@ -4,7 +4,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/ttttt"
     tools:context=".ui.HomeFragment">
 
     <com.google.android.material.button.MaterialButton
@@ -21,20 +20,5 @@
         app:iconSize="100dp"
         app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Material3.Button"
     />
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/test_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:focusable="true"
-        app:cornerRadius="200dp"
-        app:backgroundTint="#ff0000"
-        app:icon="@drawable/baseline_check_24"
-        app:iconSize="100dp"
-        app:collapsedSize="200dp"
-
-        android:text="888"
-        />
-
 
 </FrameLayout>

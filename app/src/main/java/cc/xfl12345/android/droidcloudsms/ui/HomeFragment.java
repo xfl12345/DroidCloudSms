@@ -78,47 +78,7 @@ public class HomeFragment extends Fragment implements WebSocketServiceConnection
 
         binding = FragmentHomeBinding.bind(view);
 
-        // binding.testButton.setTouchDelegate(new TouchDelegate());
-        // binding.testButton.setOnTouchListener(new View.OnTouchListener() {
-        //     @Override
-        //     public boolean onTouch(View v, MotionEvent event) {
-        //         float radius = v.getWidth() / 2f;
-        //         float x = event.getX() - radius;
-        //         float y = event.getY() - radius;
-        //         boolean flag = isInCircle(radius, x, y);
-        //         Log.d("点击测试", String.format("X=%s,Y=%s, IsClick=%s", event.getX(), event.getY(), flag));
-        //         if (flag) {
-        //             if (event.getAction() == MotionEvent.ACTION_DOWN) {
-        //                 // perform your action
-        //             }
-        //             return true;
-        //         } else {
-        //             return false;
-        //         }
-        //     }
-        //
-        //     private boolean isInCircle(float radius, float x, float y) {
-        //         if (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)) < radius) {
-        //             //touch was performed inside the circle;
-        //             return true;
-        //         } else {
-        //             //touched ouside the circle
-        //             return false;
-        //         }
-        //     }
-        // });
-        // binding.testButton.setOnClickListener((v) -> {
-        //     Log.d("点击测试", "TestButton 已点击");
-        // });
-
-
         MaterialButton button = binding.fragmentHomeButton;
-        // binding.ttttt.setOnTouchListener((v, event) -> {
-        //     Log.d("点击测试", "爸爸知道了。" + String.format("X=%s,Y=%s, IsClick=%s", event.getX(), event.getY(), true));
-        //     Log.d("点击测试", "原始绝对坐标：" + String.format("X=%s,Y=%s", event.getRawX(), event.getRawY()));
-        //     return false;
-        // });
-
         button.setOnTouchListener(new OvalTouchAreaFilter());
         button.setOnClickListener(v -> {
             new Thread(() -> {

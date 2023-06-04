@@ -38,33 +38,6 @@ public class OvalTouchAreaFilter implements View.OnTouchListener {
                     return true;
                 }
             }
-            // MotionEvent moved = MotionEvent.obtain(event);
-            // MotionEvent moved = MotionEvent.obtain(
-            //     event.getDownTime(),
-            //     event.getEventTime(),
-            //     event.getAction(),
-            //     view.getX() + event.getX(),
-            //     view.getY() + event.getY(),
-            //     event.getMetaState()
-            // );
-            // MotionEvent moved = MotionEvent.obtain(
-            //     event.getDownTime(),
-            //     event.getEventTime(),
-            //     event.getAction(),
-            //     event.getRawX(),
-            //     event.getRawY(),
-            //     event.getMetaState()
-            // );
-            // moved.setLocation(view.getX() * 2 + event.getX() * 2, view.getY() * 2 + event.getY() * 2);
-            // moved.setLocation(view.getX() + event.getX(), view.getY() + event.getY());
-            // moved.setLocation(view.getX() + event.getX(), view.getY() + event.getY() * 2);
-            // moved.setLocation(view.getX(), view.getY());
-            // moved.setLocation(event.getRawX(), event.getRawY());
-            // moved.offsetLocation(view.getX(), view.getY());
-            // Log.d("点击测试", "原始绝对坐标：" + String.format("X=%s,Y=%s", event.getRawX(), event.getRawY()));
-            // Log.d("点击测试", "修改坐标：" + String.format("X=%s,Y=%s", moved.getX(), moved.getY()));
-            // parentView.dispatchTouchEvent(event);
-            // moved.recycle();
             parentView.performClick();
 
             synchronized (OvalTouchAreaFilter.class) {
