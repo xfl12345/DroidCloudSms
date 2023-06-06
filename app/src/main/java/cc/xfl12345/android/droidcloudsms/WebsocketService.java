@@ -134,28 +134,6 @@ public class WebsocketService extends Service implements
         return PreferenceManager.getDefaultSharedPreferences(context);
     }
 
-    private String getSharedPreferencesName() {
-        String name = context.getPackageName() + "_preferences";
-        SharedPreferences sharedPreferences = context.getSharedPreferences(name, MODE_PRIVATE);
-        if (sharedPreferences.equals(getSharedPreferences())) {
-            return name;
-        } else {
-            try {
-                Method method = PreferenceManager.class.getDeclaredMethod("getDefaultSharedPreferencesName", Context.class);
-                method.setAccessible(true);
-                String tmp = (String) method.invoke(null, context);
-                if (tmp != null) {
-                    return tmp;
-                }
-            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                // ignore
-            }
-        }
-
-        postNotification("获取默认 SharedPreferences 的名字失败！");
-        return name;
-    }
-
     private Dns[] okHttpDnsArray = new Dns[0];
 
     private OkHttpClient okHttpBootstrapClient = null;
@@ -185,7 +163,7 @@ public class WebsocketService extends Service implements
 
 
         cookieManager = new WebKitSyncCookieManager(
-            new SharedPreferencesCookieStore(this, getSharedPreferencesName()),
+            new SharedPreferencesCookieStore(context, "cookie"),
             CookiePolicy.ACCEPT_ALL,
             exception -> {
                 postNotification("WebKitSyncCookieManager 创建失败！调试信息：" + exception.getMessage());
@@ -436,18 +414,20 @@ public class WebsocketService extends Service implements
         String loginUrlInText = sharedPreferences.getString(MyApplication.SP_KEY_WEBSOCKET_SERVER_LOGIN_URL, "");
         String connectUrlInText = "";
 
-        try {
-            URL connectURL = new URL(new URL(loginUrlInText), "./ws-connect");
-            String tmpConnectURLInText = connectURL.toString();
-            if (tmpConnectURLInText.startsWith("http")) {
-                connectUrlInText = "ws" + tmpConnectURLInText.substring(4);
-            } else {
-                connectUrlInText = tmpConnectURLInText;
-            }
+        if (!"".equals(loginUrlInText)) {
+            try {
+                URL connectURL = new URL(new URL(loginUrlInText), "./ws-connect");
+                String tmpConnectURLInText = connectURL.toString();
+                if (tmpConnectURLInText.startsWith("http")) {
+                    connectUrlInText = "ws" + tmpConnectURLInText.substring(4);
+                } else {
+                    connectUrlInText = tmpConnectURLInText;
+                }
 
-            return new Request.Builder().url(connectUrlInText).build();
-        } catch (MalformedURLException e) {
-            postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
+                return new Request.Builder().url(connectUrlInText).build();
+            } catch (MalformedURLException e) {
+                postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
+            }
         }
 
         return null;
