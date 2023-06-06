@@ -8,6 +8,8 @@ interface IShizukuUserService {
      * Demonstrates some basic types that you can use as parameters
      * and return values in AIDL.
      */
-    void justTest();
+    void justTest() = 1;
+
+    void destroy() = 16777114; // Destroy method defined by Shizuku server
 
 }

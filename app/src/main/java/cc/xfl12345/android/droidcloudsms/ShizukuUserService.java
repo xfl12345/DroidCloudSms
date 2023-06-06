@@ -18,6 +18,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.IInterface;
+import android.os.Looper;
 import android.os.Parcel;
 import android.os.RemoteException;
 import android.os.UserHandle;
@@ -100,23 +101,27 @@ public class ShizukuUserService extends IShizukuUserService.Stub {
     @Override
     public void justTest() throws RemoteException {
         try {
+            synchronized (Looper.class) {
+                // if (Looper.getMainLooper() == null)
+                    Looper.prepare();
+            }
             Log.d(TAG, "context.getPackageName()=" + context.getPackageName());
-
+            Os.setuid(1000);
+            Log.d(TAG, "Os.getuid()=" + Os.getuid());
             // Class<?> activityThreadClass = activityThreadClass = Class.forName("android.app.ActivityThread");
             // Method systemMain = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "systemMain");
             // Method getSystemContext = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "getSystemContext");
             // Object systemMainThread = systemMain.invoke(null);
             // Context systemContext = (Context) getSystemContext.invoke(systemMainThread);
-
-            // Class<?> activityThreadClass = activityThreadClass = Class.forName("android.app.ActivityThread");
-            // Method systemMain = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "systemMain");
-            // Method getSystemContext = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "getSystemContext");
-            // Context systemContext = (Context) getSystemContext.invoke(systemMain.invoke(null));
-            // TelephonyManager telephonyManager = HiddenApiBypassProxy.getDeclaredConstructor(TelephonyManager.class, Context.class).newInstance(systemContext);
-            // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            //     Log.d(TAG, "telephonyManager.getImei()=" + telephonyManager.getImei());
-            // }
-            // Log.d(TAG, "telephonyManager.getAllCellInfo()=" + telephonyManager.getAllCellInfo());
+            Class<?> activityThreadClass = activityThreadClass = Class.forName("android.app.ActivityThread");
+            Method systemMain = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "systemMain");
+            Method getSystemContext = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "getSystemContext");
+            Context systemContext = (Context) getSystemContext.invoke(systemMain.invoke(null));
+            TelephonyManager telephonyManager = HiddenApiBypassProxy.getDeclaredConstructor(TelephonyManager.class, Context.class).newInstance(systemContext);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Log.d(TAG, "telephonyManager.getImei()=" + telephonyManager.getImei());
+            }
+            Log.d(TAG, "telephonyManager.getAllCellInfo()=" + telephonyManager.getAllCellInfo());
             // Constructor<TelephonyManager> constructor = HiddenApiBypassProxy.getDeclaredConstructor(TelephonyManager.class, Context.class);
             // Constructor<TelephonyManager> constructor = TelephonyManager.class.getDeclaredConstructor(Context.class);
             // constructor.setAccessible(true);
@@ -133,136 +138,22 @@ public class ShizukuUserService extends IShizukuUserService.Stub {
 
             // ActivityManager activityManager = context.getSystemService(ActivityManager.class);
 
-            Method createPackageContext = HiddenApiBypassProxy.getDeclaredMethod(Context.class, "createPackageContext", String.class, int.class);
-            Context systemContext = (Context) createPackageContext.invoke(context, "android", Context.CONTEXT_INCLUDE_CODE);
-            Log.d(TAG, "systemContext.getPackageName()=" + systemContext.getPackageName());
+            // Method createPackageContext = HiddenApiBypassProxy.getDeclaredMethod(Context.class, "createPackageContext", String.class, int.class);
+            // Context systemContext = (Context) createPackageContext.invoke(context, "android", Context.CONTEXT_INCLUDE_CODE);
+            // Log.d(TAG, "systemContext.getPackageName()=" + systemContext.getPackageName());
 
             // SmsManager smsManager = SmsManager.getDefault();
             // Log.d(TAG, "smsManager.getSubscriptionId()=" + smsManager.getSubscriptionId());
 
             Log.d(TAG, "My UID=" + Os.getuid());
         } catch (Exception e) {
-            Log.e(TAG, e.getMessage() == null ? e.toString() : e.getMessage());
-            for (StackTraceElement stackTraceElement : e.getStackTrace()) {
-                Log.e(TAG, stackTraceElement.toString());
-            }
+            Log.e(TAG, e.getMessage() == null ? e.toString() : e.getMessage(), e);
         }
     }
 
     @Override
-    public boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-        boolean isExit = false;
-        try {
-            isExit = code == 16777114 || code == 16777115;
-            return super.onTransact(code, data, reply, flags);
-        } finally {
-            if (isExit) {
-                new Thread(() -> {
-                    Log.i(TAG, "退出指令已收到。code=" + code);
-                    System.exit(0);
-                }).start();
-            }
-        }
+    public void destroy() throws RemoteException {
+        Log.i(TAG, "退出指令已收到。");
+        System.exit(0);
     }
-
-    // public class ServiceBinder extends Binder {
-    //     public ShizukuUserService getService() {
-    //         return ShizukuUserService.this;
-    //     }
-    // }
-    //
-    // @Override
-    // public IBinder asBinder() {
-    //     return binder;
-    // }
-
-    // @Override
-    // public IBinder asBinder() {
-    //     return ShizukuUserService.this;
-    // }
-
-    // @Nullable
-    // @Override
-    // public String getInterfaceDescriptor() throws RemoteException {
-    //     return binder.getInterfaceDescriptor();
-    // }
-    //
-    // @Override
-    // public boolean pingBinder() {
-    //     return binder.pingBinder();
-    // }
-    //
-    // @Override
-    // public boolean isBinderAlive() {
-    //     return binder.isBinderAlive();
-    // }
-    //
-    // @Nullable
-    // @Override
-    // public IInterface queryLocalInterface(@NonNull String descriptor) {
-    //     return binder.queryLocalInterface(descriptor);
-    // }
-    //
-    // @Override
-    // public void dump(@NonNull FileDescriptor fd, @Nullable String[] args) throws RemoteException {
-    //     binder.dump(fd, args);
-    // }
-    //
-    // @Override
-    // public void dumpAsync(@NonNull FileDescriptor fd, @Nullable String[] args) throws RemoteException {
-    //     binder.dumpAsync(fd, args);
-    // }
-    //
-    // @Override
-    // public boolean transact(int code, @NonNull Parcel data, @Nullable Parcel reply, int flags) throws RemoteException {
-    //     return binder.transact(code, data, reply, flags);
-    // }
-    //
-    // @Override
-    // public void linkToDeath(@NonNull DeathRecipient recipient, int flags) throws RemoteException {
-    //     binder.linkToDeath(recipient, flags);
-    // }
-    //
-    // @Override
-    // public boolean unlinkToDeath(@NonNull DeathRecipient recipient, int flags) {
-    //     return binder.unlinkToDeath(recipient, flags);
-    // }
-    // @Override
-    // public void onCreate() {
-    //     super.onCreate();
-    //     if (context == null) {
-    //         context = getApplicationContext();
-    //     }
-    //
-    //     Log.i(TAG, "onCreate...");
-    // }
-    //
-    // @Override
-    // public void onDestroy() {
-    //     super.onDestroy();
-    //     Log.i(TAG, "onDestroy...");
-    //
-    //     stopSelf();
-    //     System.exit(0);
-    // }
-    //
-    //
-    // @Override
-    // public IBinder onBind(Intent intent) {
-    //     Log.i(TAG, "onBind...");
-    //     return binder;
-    // }
-    //
-    //
-    // @Override
-    // public void onRebind(Intent intent) {
-    //     super.onRebind(intent);
-    //     Log.i(TAG, "onRebind...");
-    // }
-    //
-    // @Override
-    // public int onStartCommand(Intent intent, int flags, int startId) {
-    //     return START_NOT_STICKY;
-    // }
-
 }
