@@ -14,7 +14,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="4dp">
+            android:layout_margin="8dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -34,20 +34,19 @@
                     android:baselineAligned="false"
                     android:orientation="vertical">
 
-                    <cc.xfl12345.android.droidcloudsms.ui.ExpandableTextView
+
+                    <at.blogc.android.views.ExpandableTextView
                         android:id="@+id/content_box"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:lineSpacingExtra="4dp"
-                        android:textSize="14sp"
-                        android:text="@string/super_huge_string"/>
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:maxLines="5"
+                        android:ellipsize="end"
+                        app:animation_duration="750"/>
 
                     <com.google.android.material.button.MaterialButton
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
                         android:id="@+id/content_expand_button"
-                        />
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
 
                 </LinearLayout>
 

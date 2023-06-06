@@ -5,9 +5,11 @@ import android.os.Bundle;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 
 
 import cc.xfl12345.android.droidcloudsms.R;
@@ -30,14 +32,19 @@ public class LogFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_log, container, false);
         FragmentLogBinding binding = FragmentLogBinding.bind(view);
 
-        binding.contentBox.setText(getString(R.string.super_huge_string));
-        binding.contentExpandButton.setOnClickListener(v -> binding.contentBox.toggle());
+        at.blogc.android.views.ExpandableTextView contentBox = binding.contentBox;
+        Button contentExpandButton = binding.contentExpandButton;
 
-        // binding.contentBox.setContent(getString(R.string.super_huge_string));
-        // binding.contentBox.getWidth();
-        // ExpandableTextView expandableTextView = binding.contentBox;
-        // expandableTextView.setEndExpendContent("...");
-        // expandableTextView.setContent(getString(R.string.super_huge_string));
+        contentBox.setText(R.string.super_huge_string);
+        contentExpandButton.setText(R.string.click_me_to_expand);
+        contentExpandButton.setOnClickListener(v -> {
+            // 如果已经展开，点击之后会收起，所以要显示“点我展开”
+            contentExpandButton.setText(contentBox.isExpanded()
+                ? R.string.click_me_to_expand
+                : R.string.click_me_to_collapse
+            );
+            contentBox.toggle();
+        });
 
 
         return view;
