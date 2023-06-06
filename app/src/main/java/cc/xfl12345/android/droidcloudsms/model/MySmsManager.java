@@ -1,15 +1,19 @@
 package cc.xfl12345.android.droidcloudsms.model;
 
-import static android.telephony.SmsManager.RESULT_NO_DEFAULT_SMS_APP;
-
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.RemoteException;
+import android.telephony.SmsManager;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.android.internal.telephony.IIntegerConsumer;
@@ -21,6 +25,9 @@ import cc.xfl12345.android.droidcloudsms.MyApplication;
 import jakarta.annotation.PreDestroy;
 
 public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChangeListener {
+
+    public final static String ACTION_SIM_STATE_CHANGED = "android.intent.action.SIM_STATE_CHANGED";
+
     public static final String TAG = "MySmsManager";
 
     private static final int RESULT_REMOTE_EXCEPTION = 32;
@@ -33,6 +40,10 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
 
     private SharedPreferences sharedPreferences;
 
+    private BroadcastReceiver simCardStateChangeBroadcastReceiver;
+
+    private Context context;
+
     public MySms getMySms() {
         return mySms;
     }
@@ -42,24 +53,68 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
     }
 
     public MySmsManager(Context context) throws ReflectiveOperationException, RemoteException {
+        this.context = context;
         mySms = new MySms();
         myISub = new MyISub();
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        mSubId = Integer.valueOf(sharedPreferences.getString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(Integer.MAX_VALUE)));
+        mSubId = getPreferencesSubscriptionbId();
         sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+
+        simCardStateChangeBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (ACTION_SIM_STATE_CHANGED.equals(intent.getAction())) {
+                    List<SubscriptionInfo> availableSubscriptionInfoList = myISub.getAvailableSubscriptionInfoList();
+                    boolean currentSimCardAvailable = false;
+
+                    for (SubscriptionInfo subscriptionInfo : availableSubscriptionInfoList) {
+                        if (subscriptionInfo.getSubscriptionId() == mSubId) {
+                            currentSimCardAvailable = true;
+                            break;
+                        }
+                    }
+
+                    if (!currentSimCardAvailable) {
+                        mSubId = myISub.getDefaultSmsSubId();
+                        setPreferencesSubscriptionbId(mSubId);
+                    }
+                }
+            }
+        };
+        ContextCompat.registerReceiver(
+            context,
+            simCardStateChangeBroadcastReceiver,
+            new IntentFilter(ACTION_SIM_STATE_CHANGED),
+            ContextCompat.RECEIVER_EXPORTED
+        );
     }
 
     @PreDestroy
     public void destroy() {
         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
+        context.unregisterReceiver(simCardStateChangeBroadcastReceiver);
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID.equals(key)) {
-            mSubId = Integer.valueOf(sharedPreferences.getString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(Integer.MAX_VALUE)));
+            mSubId = getPreferencesSubscriptionbId();
         }
     }
+
+    private void setPreferencesSubscriptionbId(int subId) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(subId));
+        editor.apply();
+    }
+
+    private int getPreferencesSubscriptionbId() {
+        return Integer.parseInt(sharedPreferences.getString(
+            MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID,
+            String.valueOf(myISub.getDefaultSmsSubId())
+        ));
+    }
+
 
     private interface SubscriptionResolverResult {
         void onSuccess(int subId);
@@ -230,18 +285,18 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
      * @throws IllegalArgumentException if destinationAddress or text are empty
      */
     public void sendTextMessage(
-            String destinationAddress, String scAddress, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        String destinationAddress, String scAddress, String text,
+        PendingIntent sentIntent, PendingIntent deliveryIntent) {
         sendTextMessageInternal(
-                destinationAddress,
-                scAddress,
-                text,
-                sentIntent,
-                deliveryIntent,
-                true /* persistMessage*/,
-                "com.android.mms",
-                null,
-                0L /* messageId */);
+            destinationAddress,
+            scAddress,
+            text,
+            sentIntent,
+            deliveryIntent,
+            true /* persistMessage*/,
+            "com.android.mms",
+            null,
+            0L /* messageId */);
     }
 
 
@@ -275,18 +330,18 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
                     MySms mySms = getISmsServiceOrThrow();
                     try {
                         mySms.sendTextForSubscriber(subId, packageName, attributionTag,
-                                destinationAddress, scAddress, text, sentIntent, deliveryIntent,
-                                persistMessage, messageId);
+                            destinationAddress, scAddress, text, sentIntent, deliveryIntent,
+                            persistMessage, messageId);
                     } catch (RemoteException e) {
                         Log.e(TAG, "sendTextMessageInternal: Couldn't send SMS, exception - "
-                                + e.getMessage() + " " + formatCrossStackMessageId(messageId));
+                            + e.getMessage() + " " + formatCrossStackMessageId(messageId));
                         notifySmsError(sentIntent, RESULT_REMOTE_EXCEPTION);
                     }
                 }
 
                 @Override
                 public void onFailure() {
-                    notifySmsError(sentIntent, RESULT_NO_DEFAULT_SMS_APP);
+                    notifySmsError(sentIntent, SmsManager.RESULT_NO_DEFAULT_SMS_APP);
                 }
             });
         } else {
@@ -295,11 +350,11 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
             MySms mySms = getISmsServiceOrThrow();
             try {
                 mySms.sendTextForSubscriber(getSubscriptionId(), packageName, attributionTag,
-                        destinationAddress, scAddress, text, sentIntent, deliveryIntent,
-                        persistMessage, messageId);
+                    destinationAddress, scAddress, text, sentIntent, deliveryIntent,
+                    persistMessage, messageId);
             } catch (RemoteException e) {
                 Log.e(TAG, "sendTextMessageInternal (no persist): Couldn't send SMS, exception - "
-                        + e.getMessage() + " " + formatCrossStackMessageId(messageId));
+                    + e.getMessage() + " " + formatCrossStackMessageId(messageId));
                 notifySmsError(sentIntent, RESULT_REMOTE_EXCEPTION);
             }
         }
@@ -326,7 +381,7 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
         }
         // We need to ask the user pick an appropriate subid for the operation.
         Log.d(TAG, "resolveSubscriptionForOperation isSmsSimPickActivityNeeded is true for calling"
-                + " package. ");
+            + " package. ");
         try {
             // Create the SMS pick activity and call back once the activity is complete. Can't do
             // it here because we do not have access to the activity context that is performing this
@@ -334,16 +389,16 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
             // Requires that the calling process has the SEND_SMS permission.
             SystemServiceBinderHelper telephonyServiceHelper = new SystemServiceBinderHelper("phone");
             telephonyServiceHelper.executeServiceDeclaredMethod(
-                    "enqueueSmsPickResult",
-                    null,
-                    null,
-                    new IIntegerConsumer.Stub() {
-                        @Override
-                        public void accept(int subId) {
-                            // Runs on binder thread attached to this app's process.
-                            sendResolverResult(resolverResult, subId, true /*pickActivityShown*/);
-                        }
+                "enqueueSmsPickResult",
+                null,
+                null,
+                new IIntegerConsumer.Stub() {
+                    @Override
+                    public void accept(int subId) {
+                        // Runs on binder thread attached to this app's process.
+                        sendResolverResult(resolverResult, subId, true /*pickActivityShown*/);
                     }
+                }
             );
 
             // Method telephonyGetter = HiddenApiBypass.getDeclaredMethod(SmsManager.class, "getITelephony");
@@ -379,18 +434,18 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
 
 
     public void sendMultipartTextMessage(
-            String destinationAddress, String scAddress, ArrayList<String> parts,
-            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
+        String destinationAddress, String scAddress, ArrayList<String> parts,
+        ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
         sendMultipartTextMessageInternal(destinationAddress, scAddress, parts, sentIntents,
-                deliveryIntents, true /* persistMessage*/, null,
-                null, 0L /* messageId */);
+            deliveryIntents, true /* persistMessage*/, null,
+            null, 0L /* messageId */);
     }
 
     private void sendMultipartTextMessageInternal(
-            String destinationAddress, String scAddress, List<String> parts,
-            List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents,
-            boolean persistMessage, String packageName, String attributionTag,
-            long messageId) {
+        String destinationAddress, String scAddress, List<String> parts,
+        List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents,
+        boolean persistMessage, String packageName, String attributionTag,
+        long messageId) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -416,18 +471,18 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
                         try {
                             MySms mySms = getISmsServiceOrThrow();
                             mySms.sendMultipartTextForSubscriber(subId, packageName, attributionTag,
-                                    destinationAddress, scAddress, parts, sentIntents,
-                                    deliveryIntents, persistMessage, messageId);
+                                destinationAddress, scAddress, parts, sentIntents,
+                                deliveryIntents, persistMessage, messageId);
                         } catch (RemoteException e) {
                             Log.e(TAG, "sendMultipartTextMessageInternal: Couldn't send SMS - "
-                                    + e.getMessage() + " " + formatCrossStackMessageId(messageId));
+                                + e.getMessage() + " " + formatCrossStackMessageId(messageId));
                             notifySmsError(sentIntents, RESULT_REMOTE_EXCEPTION);
                         }
                     }
 
                     @Override
                     public void onFailure() {
-                        notifySmsError(sentIntents, RESULT_NO_DEFAULT_SMS_APP);
+                        notifySmsError(sentIntents, SmsManager.RESULT_NO_DEFAULT_SMS_APP);
                     }
                 });
             } else {
@@ -436,12 +491,12 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
                     MySms mySms = getISmsServiceOrThrow();
                     if (mySms != null) {
                         mySms.sendMultipartTextForSubscriber(getSubscriptionId(), packageName,
-                                attributionTag, destinationAddress, scAddress, parts, sentIntents,
-                                deliveryIntents, persistMessage, messageId);
+                            attributionTag, destinationAddress, scAddress, parts, sentIntents,
+                            deliveryIntents, persistMessage, messageId);
                     }
                 } catch (RemoteException e) {
                     Log.e(TAG, "sendMultipartTextMessageInternal: Couldn't send SMS - "
-                            + e.getMessage() + " " + formatCrossStackMessageId(messageId));
+                        + e.getMessage() + " " + formatCrossStackMessageId(messageId));
                     notifySmsError(sentIntents, RESULT_REMOTE_EXCEPTION);
                 }
             }
@@ -455,7 +510,7 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
                 deliveryIntent = deliveryIntents.get(0);
             }
             sendTextMessageInternal(destinationAddress, scAddress, parts.get(0),
-                    sentIntent, deliveryIntent, true, packageName, attributionTag, messageId);
+                sentIntent, deliveryIntent, true, packageName, attributionTag, messageId);
         }
     }
 }
