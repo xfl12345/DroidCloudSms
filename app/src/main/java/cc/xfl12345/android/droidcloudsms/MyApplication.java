@@ -1,6 +1,7 @@
 package cc.xfl12345.android.droidcloudsms;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
 import android.app.Notification;
@@ -13,31 +14,165 @@ import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.RemoteException;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.hjq.permissions.Permission;
+import com.topjohnwu.superuser.Shell;
 
 import org.teasoft.bee.android.CreateAndUpgradeRegistry;
 import org.teasoft.beex.android.ApplicationRegistry;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import cc.xfl12345.android.droidcloudsms.model.AndroidPermissionNamePair;
 import cc.xfl12345.android.droidcloudsms.model.BeeCreateAndUpgrade;
+import cc.xfl12345.android.droidcloudsms.model.HiddenApiBypassProxy;
 import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.PermissionManager;
+import cc.xfl12345.android.droidcloudsms.model.SystemServiceBinderHelper;
 import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionEventHelper;
 import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionListener;
+import rikka.shizuku.Shizuku;
+import rikka.sui.Sui;
 
 public class MyApplication extends Application {
+
+    @SuppressLint("MissingPermission")
+    private void hackSystem() {
+        try {
+            System.out.println("Current UID=" + Shizuku.getUid());
+            // Set settings before the main shell can be created
+            Shell.enableVerboseLogging = true;
+            Shell.setDefaultBuilder(Shell.Builder.create()
+                .setFlags(Shell.FLAG_REDIRECT_STDERR)
+                .setTimeout(10)
+            );
+
+
+            System.out.println("Current UID=" + Shizuku.getUid());
+            Sui.init(getPackageName());
+            System.out.println("Current UID=" + Shizuku.getUid());
+
+            // Shell.Result result = Shell.cmd("find /dev/block -iname boot").exec();
+            Pattern pattern = Pattern.compile("\t.+:");
+            List<String> cmdResult = Shell.cmd("service list").exec().getOut();
+            List<String> serviceNames = cmdResult
+                .stream()
+                .map(item -> {
+                    Matcher matcher = pattern.matcher(item);
+                    if (matcher.find()) {
+                        String tmp = matcher.group();
+                        return tmp.substring(1, tmp.length() - 1);
+                    }
+                    return "";
+                })
+                .filter(item -> !"".equals(item))
+                .collect(Collectors.toList());
+            System.out.println(serviceNames);
+
+            Set<Class<?>> normalJavaDataType = new HashSet<>(60);
+            normalJavaDataType.add(int.class);
+            normalJavaDataType.add(long.class);
+            normalJavaDataType.add(short.class);
+            normalJavaDataType.add(float.class);
+            normalJavaDataType.add(double.class);
+            normalJavaDataType.add(char.class);
+            normalJavaDataType.add(byte.class);
+            normalJavaDataType.add(boolean.class);
+            normalJavaDataType.add(void.class);
+            normalJavaDataType.add(int[].class);
+            normalJavaDataType.add(long[].class);
+            normalJavaDataType.add(short[].class);
+            normalJavaDataType.add(float[].class);
+            normalJavaDataType.add(double[].class);
+            normalJavaDataType.add(char[].class);
+            normalJavaDataType.add(byte[].class);
+            normalJavaDataType.add(boolean[].class);
+            normalJavaDataType.add(CharSequence.class);
+            normalJavaDataType.add(String.class);
+            normalJavaDataType.add(Integer.class);
+            normalJavaDataType.add(Long.class);
+            normalJavaDataType.add(Short.class);
+            normalJavaDataType.add(Float.class);
+            normalJavaDataType.add(Double.class);
+            normalJavaDataType.add(Character.class);
+            normalJavaDataType.add(Byte.class);
+            normalJavaDataType.add(Boolean.class);
+            normalJavaDataType.add(Void.class);
+            normalJavaDataType.add(CharSequence[].class);
+            normalJavaDataType.add(String[].class);
+            normalJavaDataType.add(Integer[].class);
+            normalJavaDataType.add(Long[].class);
+            normalJavaDataType.add(Short[].class);
+            normalJavaDataType.add(Float[].class);
+            normalJavaDataType.add(Double[].class);
+            normalJavaDataType.add(Character[].class);
+            normalJavaDataType.add(Byte[].class);
+            normalJavaDataType.add(Boolean[].class);
+            normalJavaDataType.add(Intent.class);
+
+            List<Method> methodList = new LinkedList<>();
+            List<String> methodNameList = new LinkedList<>();
+            for (String serviceName : serviceNames) {
+                try {
+                    SystemServiceBinderHelper helper = new SystemServiceBinderHelper(serviceName);
+                    helper.getServiceClassDeclaredMethods().forEach(item -> {
+                        if (!normalJavaDataType.contains(item.getReturnType())) {
+                            methodList.add(item);
+                            methodNameList.add(item.toString());
+                            if (Context.class.isAssignableFrom(item.getReturnType()) || item.getReturnType().isAssignableFrom(Context.class)) {
+                                System.out.println("Found !!!! ----> " + item.toString());
+                            }
+                        }
+                    });
+
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+
+
+            // XposedHelpers.findField()
+
+            Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+            Method systemMain = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "systemMain");
+            Method getSystemContext = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "getSystemContext");
+            Context systemContext = (Context) getSystemContext.invoke(systemMain.invoke(null));
+            TelephonyManager telephonyManager = HiddenApiBypassProxy.getDeclaredConstructor(TelephonyManager.class, Context.class).newInstance(systemContext);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                System.out.println(telephonyManager.getImei());
+            }
+            System.out.println(telephonyManager.getAllCellInfo());
+
+
+            System.out.println(methodNameList);
+
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+
+        System.exit(0);
+    }
+
     public static final Integer STALE_NOTIFICATION_ID = 0;
 
     public static final String SP_KEY_WEBSOCKET_SERVER_LOGIN_URL = "websocketServerLoginURL";
@@ -76,6 +211,8 @@ public class MyApplication extends Application {
     // public WebsocketService getWebsocketService() {
     //     return webSocketServiceConnectionEventHelper.getService();
     // }
+    Shizuku.UserServiceArgs userServiceArgs;
+    ServiceConnection shizukuUserServiceConnection;
 
     private Boolean isExiting = false;
 
@@ -91,6 +228,7 @@ public class MyApplication extends Application {
         }
 
         myShizukuContext = new MyShizukuContext(context);
+        // hackSystem();
 
         androidPermissionList = new ArrayList<>(10);
         androidPermissionList.add(new AndroidPermissionNamePair(Manifest.permission.READ_PHONE_STATE, "获取SIM卡状态权限"));
@@ -149,15 +287,82 @@ public class MyApplication extends Application {
         });
 
         // 初始化数据库框架
-        ApplicationRegistry.register(this);//注册上下文
+        ApplicationRegistry.register(this);// 注册上下文
         CreateAndUpgradeRegistry.register(BeeCreateAndUpgrade.class);
+
+
+        Sui.init("cc.xfl12345.android.droidcloudsms");
+        myShizukuContext.requirePermission();
+        // Context context2 = getApplicationContext();
+        // try {
+        //     Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+        //     Method systemMain = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "systemMain");
+        //     Method getSystemContext = HiddenApiBypassProxy.getDeclaredMethod(activityThreadClass, "getSystemContext");
+        //     context2 = (Context) getSystemContext.invoke(systemMain.invoke(null));
+        // } catch (ClassNotFoundException | InvocationTargetException | IllegalAccessException e) {
+        //     // ignore
+        // }
+       userServiceArgs = new Shizuku.UserServiceArgs(new ComponentName(getApplicationContext(), ShizukuUserService.class))
+            .debuggable(true)
+            .daemon(false)
+            .processNameSuffix("sui")
+            // .tag(getClass().getName())
+            .version(5);
+
+       shizukuUserServiceConnection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                try {
+                    Log.d("啦啦啦Shizuku", "有回调了！");
+                    NotificationUtils.postNotification(context, "Shizuku", "有回调了！");
+                    IShizukuUserService.Stub.asInterface(service).justTest();
+                } catch (RemoteException e) {
+                    Log.e("啦啦啦Shizuku", e.getMessage() == null ? e.toString() : e.getMessage());
+                }
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+
+            }
+
+            @Override
+            public void onBindingDied(ComponentName name) {
+                Log.e("啦啦啦Shizuku", "Sui binding died");
+            }
+
+            @Override
+            public void onNullBinding(ComponentName name) {
+                Log.e("啦啦啦Shizuku", "Sui binding is null");
+            }
+        };
+        // Shizuku.unbindUserService(userServiceArgs, shizukuUserServiceConnection, true);
+        if (Shizuku.peekUserService(userServiceArgs, shizukuUserServiceConnection) < 0) {
+            Shizuku.bindUserService(userServiceArgs, shizukuUserServiceConnection);
+        }
+
+
+        // startService(shizukuUserServiceIntent);
+        // Intent shizukuUserServiceIntent = new Intent().setClass(getApplicationContext(), ShizukuUserService.class);
+        // bindService(shizukuUserServiceIntent, new ServiceConnection() {
+        //     @Override
+        //     public void onServiceConnected(ComponentName name, IBinder service) {
+        //
+        //     }
+        //
+        //     @Override
+        //     public void onServiceDisconnected(ComponentName name) {
+        //
+        //     }
+        // }, BIND_AUTO_CREATE);
+
 
         // 吊起前台保活服务
         websocketServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);
         websocketServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder iBinder) {
-                webSocketServiceConnectionEventHelper.onServiceConnected(((WebsocketService.WebsocketServiceBinder) iBinder).getService());
+                webSocketServiceConnectionEventHelper.onServiceConnected(((WebsocketService.ServiceBinder) iBinder).getService());
             }
 
             @Override
@@ -194,6 +399,12 @@ public class MyApplication extends Application {
         try {
             myShizukuContext.close();
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            Shizuku.unbindUserService(userServiceArgs, shizukuUserServiceConnection, true);
+        } catch (Exception e) {
             e.printStackTrace();
         }
 

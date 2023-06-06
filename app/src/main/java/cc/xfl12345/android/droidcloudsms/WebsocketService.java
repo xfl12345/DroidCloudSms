@@ -82,7 +82,7 @@ public class WebsocketService extends Service implements
 
     public static final int SERVICE_ID_INT = 1;
 
-    private final IBinder binder = new WebsocketServiceBinder();
+    private final IBinder binder = new ServiceBinder();
 
     private MyApplication context;
 
@@ -166,7 +166,7 @@ public class WebsocketService extends Service implements
     }
 
     // 用于Activity和service通讯
-    public class WebsocketServiceBinder extends Binder {
+    public class ServiceBinder extends Binder {
         public WebsocketService getService() {
             return WebsocketService.this;
         }
@@ -185,7 +185,7 @@ public class WebsocketService extends Service implements
 
 
         cookieManager = new WebKitSyncCookieManager(
-            new SharedPreferencesCookieStore(this, getSharedPreferencesName()),
+            new SharedPreferencesCookieStore(context, "cookie"),
             CookiePolicy.ACCEPT_ALL,
             exception -> {
                 postNotification("WebKitSyncCookieManager 创建失败！调试信息：" + exception.getMessage());

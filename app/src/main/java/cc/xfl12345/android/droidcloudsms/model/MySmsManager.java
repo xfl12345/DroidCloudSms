@@ -1,15 +1,21 @@
 package cc.xfl12345.android.droidcloudsms.model;
 
-import static android.telephony.SmsManager.RESULT_NO_DEFAULT_SMS_APP;
-
+import android.app.ActivityManager;
 import android.app.PendingIntent;
+import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.RemoteException;
+import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.android.internal.telephony.IIntegerConsumer;
@@ -21,6 +27,8 @@ import cc.xfl12345.android.droidcloudsms.MyApplication;
 import jakarta.annotation.PreDestroy;
 
 public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChangeListener {
+
+    public final static String ACTION_SIM_STATE_CHANGED = "android.intent.action.SIM_STATE_CHANGED";
     public static final String TAG = "MySmsManager";
 
     private static final int RESULT_REMOTE_EXCEPTION = 32;
@@ -33,6 +41,10 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
 
     private SharedPreferences sharedPreferences;
 
+    private BroadcastReceiver simCardStateChangeBroadcastReceiver;
+
+    private Context context;
+
     public MySms getMySms() {
         return mySms;
     }
@@ -42,16 +54,45 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
     }
 
     public MySmsManager(Context context) throws ReflectiveOperationException, RemoteException {
+        this.context = context;
         mySms = new MySms();
         myISub = new MyISub();
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        mSubId = Integer.valueOf(sharedPreferences.getString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(Integer.MAX_VALUE)));
+        mSubId = Integer.valueOf(sharedPreferences.getString(
+            MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID,
+            String.valueOf(myISub.getDefaultSmsSubId())
+        ));
         sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+
+        simCardStateChangeBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (ACTION_SIM_STATE_CHANGED.equals(intent.getAction())) {
+                    // int state = tm.getSimState();
+
+                    boolean currentSimCardAvailable = false;
+
+                    if (!currentSimCardAvailable) {
+                        mSubId = myISub.getDefaultSmsSubId();
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(mSubId));
+                        editor.apply();
+                    }
+                }
+            }
+        };
+        ContextCompat.registerReceiver(
+            context,
+            simCardStateChangeBroadcastReceiver,
+            new IntentFilter(ACTION_SIM_STATE_CHANGED),
+            ContextCompat.RECEIVER_EXPORTED
+        );
     }
 
     @PreDestroy
     public void destroy() {
         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
+        context.unregisterReceiver(simCardStateChangeBroadcastReceiver);
     }
 
     @Override
@@ -60,6 +101,29 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
             mSubId = Integer.valueOf(sharedPreferences.getString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, String.valueOf(Integer.MAX_VALUE)));
         }
     }
+
+
+
+    // private int getSimStateIncludingLoaded() {
+    //     int slotIndex = myISub.getSlotIndex(myISub.getDefaultSmsSubId());
+    //     // slotIndex may be invalid due to sim being absent. In that case query all slots to get
+    //     // sim state
+    //     if (slotIndex < 0) {
+    //         // query for all slots and return absent if all sim states are absent, otherwise
+    //         // return unknown
+    //         for (int i = 0; i < getPhoneCount(); i++) {
+    //             int simState = getSimState(i);
+    //             if (simState != TelephonyManager.SIM_STATE_ABSENT) {
+    //                 return TelephonyManager.SIM_STATE_UNKNOWN;
+    //             }
+    //         }
+    //         return TelephonyManager.SIM_STATE_ABSENT;
+    //     }
+    //
+    //     TelephonyManager.SIM_STATE_READY
+    //     return getSimStateForSlotIndex(slotIndex);
+    // }
+
 
     private interface SubscriptionResolverResult {
         void onSuccess(int subId);
@@ -286,7 +350,7 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
 
                 @Override
                 public void onFailure() {
-                    notifySmsError(sentIntent, RESULT_NO_DEFAULT_SMS_APP);
+                    notifySmsError(sentIntent, SmsManager.RESULT_NO_DEFAULT_SMS_APP);
                 }
             });
         } else {
@@ -427,7 +491,7 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
 
                     @Override
                     public void onFailure() {
-                        notifySmsError(sentIntents, RESULT_NO_DEFAULT_SMS_APP);
+                        notifySmsError(sentIntents, SmsManager.RESULT_NO_DEFAULT_SMS_APP);
                     }
                 });
             } else {

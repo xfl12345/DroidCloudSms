@@ -34,6 +34,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        aidl true
     }
 }
 
@@ -74,7 +75,22 @@ dependencies {
     // implementation group: 'com.android.support', name: 'support-v4', version: '28.0.0'
 
 
+    // libsu - A complete solution for apps using root permissions
+    // https://github.com/topjohnwu/libsu
+    String libsuVersion = '5.1.0'
+
+    // The core module that provides APIs to a shell
+    implementation "com.github.topjohnwu.libsu:core:${libsuVersion}"
+
+    // Optional: APIs for creating root services. Depends on ":core"
+    implementation "com.github.topjohnwu.libsu:service:${libsuVersion}"
+
+    // Optional: Provides remote file system support
+    implementation "com.github.topjohnwu.libsu:nio:${libsuVersion}"
+
+
     // shizuku API
+    // https://github.com/RikkaApps/Shizuku-API
     String shizukuVersion = '13.1.1'
 
     // https://mvnrepository.com/artifact/dev.rikka.shizuku/api
@@ -93,6 +109,17 @@ dependencies {
     // LSPosed Hidden API Bypass
     // https://mvnrepository.com/artifact/org.lsposed.hiddenapibypass/hiddenapibypass
     implementation group: 'org.lsposed.hiddenapibypass', name: 'hiddenapibypass', version: '4.3'
+
+
+    // // xposed API
+    // // https://mvnrepository.com/artifact/de.robv.android.xposed/api
+    // compileOnly group: 'de.robv.android.xposed', name: 'api', version: '82'
+
+
+    // // https://mvnrepository.com/artifact/com.anggrayudi/android-hidden-api
+    // implementation group: 'com.anggrayudi', name: 'android-hidden-api', version: '30.0'
+
+
 
     // JSON support
     // // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
