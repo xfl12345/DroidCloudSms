@@ -32,8 +32,6 @@ import net.gotev.cookiestore.WebKitSyncCookieManager;
 import net.gotev.cookiestore.okhttp.JavaNetCookieJar;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.InetAddress;
@@ -165,8 +163,8 @@ public class WebsocketService extends Service implements
         cookieManager = new WebKitSyncCookieManager(
             new SharedPreferencesCookieStore(context, "cookie"),
             CookiePolicy.ACCEPT_ALL,
-            exception -> {
-                postNotification("WebKitSyncCookieManager 创建失败！调试信息：" + exception.getMessage());
+            throwable -> {
+                postNotificationOnConnectFailed("WebKitSyncCookieManager 创建失败！", throwable);
                 return null;
             }
         );
@@ -387,22 +385,21 @@ public class WebsocketService extends Service implements
                                         .dns(okhttpDns)
                                         .build();
                                 } else {
-                                    postNotification("WebSocket登录失败！调试消息：" + loginResponsePayload);
+                                    postNotificationOnConnectFailed("WebSocket登录失败！", loginResponsePayload);
                                 }
                             } catch (JsonSyntaxException e) {
-                                postNotification("WebSocket登录请求回执内容解析失败！调试消息：" + e.getMessage());
+                                postNotificationOnConnectFailed("WebSocket登录请求回执内容解析失败！", e);
                             }
                         } else {
-                            postNotification("WebSocket登录请求失败！调试消息：" + loginResponse.body());
+                            postNotificationOnConnectFailed("WebSocket登录请求失败！", loginResponse.body().toString());
                         }
                         loginResponse.close();
                     } catch (IOException e) {
-                        postNotification("WebSocket 连接失败！调试消息：" + e.getMessage());
-                        webSocketStatusEventAmplifier.onDisconnected(null, null, e, null);
+                        postNotificationOnConnectFailed("WebSocket 连接失败！", e);
                     }
                 }
             } catch (MalformedURLException e) {
-                postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
+                postNotificationOnConnectFailed("WebSocket登录URL格式错误！", e);
             }
         }
 
@@ -426,7 +423,7 @@ public class WebsocketService extends Service implements
 
                 return new Request.Builder().url(connectUrlInText).build();
             } catch (MalformedURLException e) {
-                postNotification("WebSocket登录URL格式错误！调试消息：" + e.getMessage());
+                postNotificationOnConnectFailed("WebSocket登录URL格式错误！", e);
             }
         }
 
@@ -460,7 +457,7 @@ public class WebsocketService extends Service implements
                             }
                         }
                     } catch (Exception e) {
-                        postNotification("收到消息，但解析发生错误。调试消息：" + e.getMessage());
+                        postNotificationOnConnectFailed("收到消息，但解析发生错误。", e);
                     }
                 }
 
@@ -507,6 +504,16 @@ public class WebsocketService extends Service implements
         }
     }
 
+
+    private int postNotificationOnConnectFailed(String content, Throwable throwable) {
+        webSocketStatusEventAmplifier.onDisconnected(null, null, throwable, null);
+        return postNotification(content + (throwable == null ? "" : "调试信息：" + throwable.getMessage()));
+    }
+
+    private int postNotificationOnConnectFailed(String content, String message) {
+        webSocketStatusEventAmplifier.onDisconnected(message, null, null, null);
+        return postNotification(content + (message == null ? "" : "调试信息：" + message));
+    }
 
     private int postNotification(String content) {
         int requestCode = notificationIdGenerator.generate();
