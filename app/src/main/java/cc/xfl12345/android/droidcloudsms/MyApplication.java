@@ -164,58 +164,37 @@ public class MyApplication extends Application {
         });
 
 
-        try {
-            MyDatabaseHelper helper = new MyDatabaseHelper(context, "droid_cloud_sms.db", null, 1);
-            helper.getWritableDatabase().close();
-            helper.close();
-        } catch (Exception e) {
-            Log.d(MyApplication.class.getCanonicalName(), "创建数据库失败", e);
-        }
-        // 初始化数据库框架
-        // InputStream inputStream = getResources().openRawResource(R.raw.bee);
-        // HoneyConfig.getHoneyConfig().resetBeeProperties(inputStream);
-        // try {
-        //     inputStream.close();
-        // } catch (IOException e) {
-        //     throw new RuntimeException(e);
-        // }
-        // TypeHandlerRegistry.register(String.class, new TypeHandler<String>() {
-        //     @Override
-        //     public String process(Class<String> fieldType, Object result) {
-        //         return null;
-        //     }
-        // }, true);
-        // org.teasoft.honey.osql.autogen.Java2DbType.getJava2DbType(
-        //     DatabaseConst.SQLite
-        // ).put("java.lang.String", "text");
-        ApplicationRegistry.register(this);//注册上下文
-        // CreateAndUpgradeRegistry.register(BeeCreateAndUpgrade.class);
-        // if(!Ddl.isExistTable(new NotificationLog())) {
-        //     Ddl.createTable(NotificationLog.class, false);
-        // }
-        // if(!Ddl.isExistTable(new SmsLog())) {
-        //     Ddl.createTable(SmsLog.class, false);
-        // }
-
-        // 吊起前台保活服务
-        websocketServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);
-        websocketServiceConnection = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder iBinder) {
-                webSocketServiceConnectionEventHelper.onServiceConnected(((WebsocketService.WebsocketServiceBinder) iBinder).getService());
+        new Thread(() -> {
+            // 初始化数据库
+            try {
+                MyDatabaseHelper helper = new MyDatabaseHelper(context, "droid_cloud_sms.db", null, 1);
+                helper.getWritableDatabase().close();
+                helper.close();
+            } catch (Exception e) {
+                Log.d(MyApplication.class.getCanonicalName(), "创建数据库失败", e);
             }
+            ApplicationRegistry.register(this);//注册上下文
 
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-                webSocketServiceConnectionEventHelper.onServiceDisconnected();
+            // 吊起前台保活服务
+            websocketServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);
+            websocketServiceConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name, IBinder iBinder) {
+                    webSocketServiceConnectionEventHelper.onServiceConnected(((WebsocketService.WebsocketServiceBinder) iBinder).getService());
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName name) {
+                    webSocketServiceConnectionEventHelper.onServiceDisconnected();
+                }
+            };
+            boundWebsocketService = bindService(websocketServiceIntent, websocketServiceConnection, Context.BIND_AUTO_CREATE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(websocketServiceIntent);
+            } else {
+                startService(websocketServiceIntent);
             }
-        };
-        boundWebsocketService = bindService(websocketServiceIntent, websocketServiceConnection, Context.BIND_AUTO_CREATE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(websocketServiceIntent);
-        } else {
-            startService(websocketServiceIntent);
-        }
+        }, MyApplication.class.getCanonicalName() + "_on_create_init_db_start_ws_service").start();
     }
 
     public void justExit() {
