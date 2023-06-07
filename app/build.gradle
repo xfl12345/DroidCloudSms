@@ -7,6 +7,9 @@ android {
     compileSdk 33
 
     defaultConfig {
+        // Required when setting minSdkVersion to 20 or lower
+        multiDexEnabled true
+
         applicationId "cc.xfl12345.android.droidcloudsms"
         minSdk 24
         targetSdk 33
@@ -29,15 +32,23 @@ android {
         }
     }
     compileOptions {
+        // Flag to enable support for the new language APIs
+        coreLibraryDesugaringEnabled true
+
+        // Sets Java compatibility to Java 11
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
     buildFeatures {
         viewBinding true
+        dataBinding true
     }
 }
 
 dependencies {
+
+    // https://mvnrepository.com/artifact/com.android.tools/desugar_jdk_libs
+    coreLibraryDesugaring  group: 'com.android.tools', name: 'desugar_jdk_libs', version: '2.0.3'
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
@@ -104,6 +115,10 @@ dependencies {
     // https://mvnrepository.com/artifact/jakarta.annotation/jakarta.annotation-api
     implementation group: 'jakarta.annotation', name: 'jakarta.annotation-api', version: '2.1.1'
 
+    // // Oracle javax JPA
+    // // https://mvnrepository.com/artifact/javax.persistence/javax.persistence-api
+    // implementation group: 'javax.persistence', name: 'javax.persistence-api', version: '2.2'
+
 
     // 权限请求框架：https://github.com/getActivity/XXPermissions
     implementation 'com.github.getActivity:XXPermissions:18.0'
@@ -157,7 +172,7 @@ dependencies {
 
 
     // 中国国产 Java ORM 框架 bee
-    String beeOrmVersion = '1.17'
+    String beeOrmVersion = '2.1'
     // https://mvnrepository.com/artifact/org.teasoft/bee
     implementation group: 'org.teasoft', name: 'bee', version: beeOrmVersion
 

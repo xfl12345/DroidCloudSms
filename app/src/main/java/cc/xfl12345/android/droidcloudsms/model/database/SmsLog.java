@@ -1,14 +1,16 @@
 package cc.xfl12345.android.droidcloudsms.model.database;
 
-import java.util.Date;
+import cc.xfl12345.android.droidcloudsms.model.ws.SmsTask;
 
 public class SmsLog {
 
     private Long id;
 
-    private Date time;
+    private String time;
 
     private String phoneNumber;
+
+    private String validationCode;
 
     private String content;
 
@@ -20,12 +22,20 @@ public class SmsLog {
         this.id = id;
     }
 
-    public Date getTime() {
+    public String getTime() {
         return time;
     }
 
-    public void setTime(Date time) {
+    public void setTime(String time) {
         this.time = time;
+    }
+
+    public String getValidationCode() {
+        return validationCode;
+    }
+
+    public void setValidationCode(String validationCode) {
+        this.validationCode = validationCode;
     }
 
     public String getPhoneNumber() {
@@ -42,5 +52,13 @@ public class SmsLog {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public void setSmsTask(SmsTask smsTask) {
+        setPhoneNumber(smsTask.getPhoneNumber());
+        setValidationCode(smsTask.getValidationCode());
+        // SQLiteDatabase
+        setContent(smsTask.getSmsContent());
+        setTime(smsTask.getCreateTime());
     }
 }

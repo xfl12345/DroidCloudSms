@@ -131,12 +131,20 @@ public class WebSocketManager {
                 destroyLock.readLock().unlock();
 
                 if (canRun && !isConnected()) {
+                    if (webSocket != null) {
+                        webSocket.cancel();
+                    }
+
                     if (retryCount <= maxRetry) {
                         statusListener.onReconnecting();
                         try {
                             Thread.sleep(reconnectInterval);
-                            connect();
                             retryCount++;
+                            Log.d(
+                                WebSocketManager.class.getCanonicalName(),
+                                String.format("Reconnecting.(%s/%s)", retryCount, maxRetry)
+                            );
+                            connect();
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -208,6 +216,14 @@ public class WebSocketManager {
                 int recheckTimes = 100;
                 int recheckCount = 0;
                 while (isConnected() && recheckCount <= recheckTimes) {
+                    boolean canRun;
+                    destroyLock.readLock().lock();
+                    canRun = !destroying;
+                    destroyLock.readLock().unlock();
+                    if (!canRun) {
+                        break;
+                    }
+
                     try {
                         Thread.sleep(100);
                         recheckCount += 1;
@@ -299,13 +315,17 @@ public class WebSocketManager {
 
     public static interface StatusListener {
 
-        default void onConnected() {}
+        default void onConnected() {
+        }
 
-        default void onReconnecting() {}
+        default void onReconnecting() {
+        }
 
-        default void onDisconnected(@Nullable String reason, @Nullable Integer code, @Nullable Throwable throwable, @Nullable Response response) {}
+        default void onDisconnected(@Nullable String reason, @Nullable Integer code, @Nullable Throwable throwable, @Nullable Response response) {
+        }
 
-        default void onRetryMaxReached() {}
+        default void onRetryMaxReached() {
+        }
 
     }
 }

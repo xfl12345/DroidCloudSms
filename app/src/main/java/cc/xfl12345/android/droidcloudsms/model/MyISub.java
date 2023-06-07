@@ -13,6 +13,8 @@ import java.util.List;
 public class MyISub {
     protected SystemServiceBinderHelper serviceBinderHelper;
 
+    protected Method methodGetActiveSubscriptionInfo;
+
     protected Method methodGetAllSubInfoList;
 
     protected Method methodGetAvailableSubscriptionInfoList;
@@ -34,6 +36,7 @@ public class MyISub {
     public MyISub() throws ReflectiveOperationException, RemoteException {
         serviceBinderHelper = new SystemServiceBinderHelper("isub");
 
+        methodGetActiveSubscriptionInfo = serviceBinderHelper.getServiceDeclaredMethod("getActiveSubscriptionInfo", int.class, String.class, String.class);
         methodGetAllSubInfoList = serviceBinderHelper.getServiceDeclaredMethod("getAllSubInfoList", String.class, String.class);
         methodGetAvailableSubscriptionInfoList = serviceBinderHelper.getServiceDeclaredMethod("getAvailableSubscriptionInfoList", String.class, String.class);
         methodGetActiveSubInfoCountMax = serviceBinderHelper.getServiceDeclaredMethod("getActiveSubInfoCountMax");
@@ -43,6 +46,14 @@ public class MyISub {
         methodGetSubId = serviceBinderHelper.getServiceDeclaredMethod("getSubId", int.class);
         methodGetDefaultSmsSubId = serviceBinderHelper.getServiceDeclaredMethod("getDefaultSmsSubId");
 
+    }
+
+    public SubscriptionInfo getActiveSubscriptionInfo(int subId) {
+        try {
+            return (SubscriptionInfo) methodGetActiveSubscriptionInfo.invoke(serviceBinderHelper.getServiceInstance(), subId, "android", Manifest.permission.READ_PHONE_STATE);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            return null;
+        }
     }
 
     public List<SubscriptionInfo> getAllSubInfoList() {

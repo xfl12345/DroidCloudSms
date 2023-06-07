@@ -16,7 +16,11 @@ import android.os.RemoteException;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
+import org.teasoft.honey.osql.shortcut.BF;
+
 import cc.xfl12345.android.droidcloudsms.R;
+import cc.xfl12345.android.droidcloudsms.model.database.SmsLog;
+import cc.xfl12345.android.droidcloudsms.model.ws.SmsTask;
 import jakarta.annotation.PreDestroy;
 
 public class SmSender {
@@ -27,17 +31,14 @@ public class SmSender {
     public static final String NOTIFICATION_TITLE = "短信服务";
 
     public static final String SENT_SM_ACTION = "cc.xfl12345.android.droidcloudsms.SmSender.SENT_SM_ACTION";
-    public static final String CLEAR_NOTIFICATION_ACTION = "cc.xfl12345.android.droidcloudsms.SmSender.CLEAR_NOTIFICATION_ACTION";
 
-    protected int sequence = 1;
+    private final IdGenerator notificationIdGenerator = new IdGenerator(1);
 
     protected final MySmsManager smsManager;
 
     protected Context context;
 
     protected BroadcastReceiver sentSmActionBroadcastReceiver;
-
-    protected BroadcastReceiver clearNotificationActionBroadcastReceiver;
 
     public MySmsManager getSmsManager() {
         return smsManager;
@@ -76,23 +77,50 @@ public class SmSender {
 
     /**
      * 发送短信
-     *
-     * @param phoneNumber 电话号码
-     * @param content     发送内容
      */
-    public void sendMessage(String phoneNumber, String content) {
-        Intent sentIntent = new Intent(SENT_SM_ACTION);
+    public void sendMessage(SmsTask smsTask) {
+        String phoneNumber = smsTask.getPhoneNumber();
+        String validationCode = smsTask.getValidationCode();
+        String content = smsTask.getSmsContent();
 
-        int currentSequence = 0;
-        synchronized (SENT_SM_ACTION) {
-            currentSequence = sequence;
-            sequence += 1;
+        SmsLog smsLog = new SmsLog();
+        smsLog.setSmsTask(smsTask);
+        long id = 0;
+        int sequence = notificationIdGenerator.generate();
+        try {
+            id = BF.getSuidRich().insertAndReturnId(smsLog);
+        } catch (Exception e) {
+            Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle(NOTIFICATION_TITLE)
+                .setContentText("保存短信失败")
+                .setSmallIcon(R.drawable.baseline_contact_mail_24)
+                .setContentIntent(PendingIntent.getActivity(
+                    context,
+                    sequence,
+                    new Intent(),
+                    PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
+                ))
+                .setOngoing(false)
+                .setAutoCancel(true)
+                .build();
+            getNotificationManager().notify(
+                CHANNEL_ID,
+                sequence,
+                notification
+            );
         }
 
-        sentIntent.putExtra("sequence", currentSequence);
+
+        if (id == 0) {
+            sequence = notificationIdGenerator.generate();
+        }
+        Intent sentIntent = new Intent(SENT_SM_ACTION);
+        sentIntent.putExtra("id", id);
+        sentIntent.putExtra("sequence", sequence);
         sentIntent.putExtra("phoneNumber", phoneNumber);
+        sentIntent.putExtra("validationCode", validationCode);
         sentIntent.putExtra("content", content);
-        PendingIntent sentPI = PendingIntent.getBroadcast(context, currentSequence, sentIntent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent sentPI = PendingIntent.getBroadcast(context, sequence, sentIntent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
         smsManager.sendTextMessage(phoneNumber, null, content, sentPI, null);
     }
@@ -102,6 +130,7 @@ public class SmSender {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int sequence = intent.getIntExtra("sequence", -1);
+                int id = intent.getIntExtra("id", -1);
                 String phoneNumber = intent.getStringExtra("phoneNumber");
                 String smContent = intent.getStringExtra("content");
 
@@ -109,18 +138,16 @@ public class SmSender {
                 // case SmsManager.RESULT_ERROR_RADIO_OFF:
                 // case SmsManager.RESULT_ERROR_NULL_PDU:
                 // SmsManager.RESULT_ERROR_GENERIC_FAILURE
-                String notificationContent = (getResultCode() == Activity.RESULT_OK ?
-                    "第" + sequence + "条 发送成功！" :
-                    "第" + sequence + "条 发送失败，状态码：[" + getResultCode() + "]，") +
-                    "收件人：" + phoneNumber + ", 内容：[" + smContent + "]";
+                String notificationContent = (getResultCode() == Activity.RESULT_OK
+                    ? "ID:" + id + "，发送成功！"
+                    : String.format("ID:%s，发送失败！状态码：[%s]，", id, getResultCode()))
+                    + String.format("收件人：%s，内容：[%s]", phoneNumber, smContent);
 
-                Intent clearNotificationIntent = new Intent(CLEAR_NOTIFICATION_ACTION);
-                clearNotificationIntent.putExtra("sequence", sequence);
                 PendingIntent pendingIntent = PendingIntent.getActivity(
                     context,
                     sequence,
-                    clearNotificationIntent,
-                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT
+                    new Intent(),
+                    PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
                 );
                 Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                     .setContentTitle(NOTIFICATION_TITLE)
@@ -134,16 +161,6 @@ public class SmSender {
             }
         };
 
-        clearNotificationActionBroadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                int sequence = intent.getIntExtra("sequence", -1);
-                if (sequence != -1) {
-                    getNotificationManager().cancel(CHANNEL_ID, sequence);
-                }
-            }
-        };
-
 
         ContextCompat.registerReceiver(
             context,
@@ -151,18 +168,10 @@ public class SmSender {
             new IntentFilter(SENT_SM_ACTION),
             ContextCompat.RECEIVER_EXPORTED
         );
-        ContextCompat.registerReceiver(
-            context,
-            clearNotificationActionBroadcastReceiver,
-            new IntentFilter(CLEAR_NOTIFICATION_ACTION),
-            ContextCompat.RECEIVER_EXPORTED
-        );
-
     }
 
     protected void unregisterReceiver() {
         context.unregisterReceiver(sentSmActionBroadcastReceiver);
-        context.unregisterReceiver(clearNotificationActionBroadcastReceiver);
     }
 
     @PreDestroy

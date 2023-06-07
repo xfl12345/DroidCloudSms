@@ -31,6 +31,9 @@ import net.gotev.cookiestore.SharedPreferencesCookieStore;
 import net.gotev.cookiestore.WebKitSyncCookieManager;
 import net.gotev.cookiestore.okhttp.JavaNetCookieJar;
 
+import org.teasoft.bee.osql.api.SuidRich;
+import org.teasoft.honey.osql.shortcut.BF;
+
 import java.io.IOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
@@ -41,10 +44,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import cc.xfl12345.android.droidcloudsms.model.BaseEventAmplifier;
 import cc.xfl12345.android.droidcloudsms.model.IdGenerator;
 import cc.xfl12345.android.droidcloudsms.model.SmSender;
+import cc.xfl12345.android.droidcloudsms.model.TimeUtils;
+import cc.xfl12345.android.droidcloudsms.model.database.NotificationLog;
 import cc.xfl12345.android.droidcloudsms.model.ws.WebSocketManager;
 import cc.xfl12345.android.droidcloudsms.model.http.response.JsonApiResponseData;
 import cc.xfl12345.android.droidcloudsms.model.ws.SmsTaskRequestObject;
@@ -75,6 +82,8 @@ public class WebsocketService extends Service implements
     public static final String SERVICE_NAME = TAG;
 
     public static final String CHANNEL_ID = TAG;
+
+    public static final String NOTIFICATION_TITLE = "核心服务";
 
     public static final String SERVICE_NOTIFICATION_CHANNEL_NAME = "SmsWebsocket";
 
@@ -284,11 +293,11 @@ public class WebsocketService extends Service implements
                 smSender = new SmSender(context);
                 postNotification("创建短信服务成功！");
             } catch (ReflectiveOperationException | RemoteException e) {
-                postNotification("创建短信服务失败！原因：" + e.getMessage());
+                postNotificationOnError("创建短信服务失败！", e);
                 e.printStackTrace();
             }
         } else {
-            postNotification("创建短信服务失败！原因：" + "Shizuku 未授权");
+            postNotification("创建短信服务失败！Shizuku 未授权", Log.ERROR);
         }
     }
 
@@ -342,7 +351,7 @@ public class WebsocketService extends Service implements
                                 }
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            Log.d(TAG, "DNS request failed.", e);
                         }
                     }
                     if (records.size() == 0) {
@@ -377,10 +386,10 @@ public class WebsocketService extends Service implements
                                 if (responseData.isSuccess()) {
                                     return new OkHttpClient.Builder()
                                         // .callTimeout(60, TimeUnit.SECONDS)
-                                        .readTimeout(5, TimeUnit.SECONDS)
-                                        .writeTimeout(5, TimeUnit.SECONDS)
-                                        .connectTimeout(20, TimeUnit.SECONDS)
-                                        .pingInterval(3, TimeUnit.SECONDS)
+                                        .readTimeout(3, TimeUnit.SECONDS)
+                                        .writeTimeout(3, TimeUnit.SECONDS)
+                                        .connectTimeout(6, TimeUnit.SECONDS)
+                                        .pingInterval(2, TimeUnit.SECONDS)
                                         .cookieJar(cookieJar)
                                         .dns(okhttpDns)
                                         .build();
@@ -442,43 +451,48 @@ public class WebsocketService extends Service implements
             destroyWebSocket();
 
             OkHttpClient client = okHttpWebsocketClientGenerator();
-            Request request = okHttpWebsocketRequestGenerator();
-
-            WebSocketListener webSocketListener = new WebSocketListener() {
-                @Override
-                public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
-                    try {
-                        WebSocketMessage message = new Gson().fromJson(text, WebSocketMessage.class);
-                        if (WebSocketMessage.Type.request.equals(message.getMessageType())) {
-                            JsonObject jsonObject = new Gson().toJsonTree(message.getPayload()).getAsJsonObject();
-                            if ("sendSms".equals(jsonObject.get("operation").getAsString())) {
-                                SmsTaskRequestObject requestObject = new Gson().fromJson(jsonObject, SmsTaskRequestObject.class);
-                                smSender.sendMessage(requestObject.data.getPhoneNumber(), requestObject.data.getSmsContent());
-                            }
-                        }
-                    } catch (Exception e) {
-                        postNotificationOnConnectFailed("收到消息，但解析发生错误。", e);
-                    }
-                }
-
-                @Override
-                public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
-                    if (response != null && 403 == response.code()) {
-                        postNotification("WebsSocket 认证过期，即将重新登录。");
-                        initWebSocket();
-                    }
-                }
-
-                @Override
-                public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
-                    if (403 == response.code()) {
-                        postNotification("WebsSocket 认证过期，即将重新登录。");
-                        initWebSocket();
-                    }
-                }
-            };
+            Request request = null;
+            if (client != null) {
+                request = okHttpWebsocketRequestGenerator();
+            }
 
             if (client != null && request != null) {
+                WebSocketListener webSocketListener = new WebSocketListener() {
+                    @Override
+                    public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
+                        try {
+                            WebSocketMessage message = new Gson().fromJson(text, WebSocketMessage.class);
+                            if (WebSocketMessage.Type.request.equals(message.getMessageType())) {
+                                JsonObject jsonObject = new Gson().toJsonTree(message.getPayload()).getAsJsonObject();
+                                if ("sendSms".equals(jsonObject.get("operation").getAsString())) {
+                                    SmsTaskRequestObject requestObject = new Gson().fromJson(jsonObject, SmsTaskRequestObject.class);
+                                    smSender.sendMessage(requestObject.data);
+                                }
+                            }
+                        } catch (Exception e) {
+                            postNotificationOnError("收到消息，但解析发生错误。", e);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
+                        if (response != null && 403 == response.code()) {
+                            postNotificationOnConnectFailed("WebsSocket 认证过期，即将重新登录。", response.message());
+                            initWebSocket();
+                        }
+                    }
+
+                    @Override
+                    public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
+                        if (403 == response.code()) {
+                            postNotificationOnConnectFailed("WebsSocket 认证过期，即将重新登录。", response.message());
+                            initWebSocket();
+                        } else {
+                            postNotification("WebsSocket 正在连接");
+                        }
+                    }
+                };
+
                 WebSocketManager webSocketManager = new WebSocketManager(
                     client,
                     request,
@@ -494,6 +508,9 @@ public class WebsocketService extends Service implements
             }
 
             recreatingWebSocket = false;
+            if (!isWebSocketConnected()) {
+                webSocketStatusEventAmplifier.onDisconnected("重新创建 WebSocket 失败！", null, null, null);
+            }
         }, WebsocketService.class.getName() + "_initWebSocket").start();
     }
 
@@ -507,17 +524,39 @@ public class WebsocketService extends Service implements
 
     private int postNotificationOnConnectFailed(String content, Throwable throwable) {
         webSocketStatusEventAmplifier.onDisconnected(null, null, throwable, null);
-        return postNotification(content + (throwable == null ? "" : "调试信息：" + throwable.getMessage()));
+        return postNotificationOnError(content, throwable);
     }
 
     private int postNotificationOnConnectFailed(String content, String message) {
         webSocketStatusEventAmplifier.onDisconnected(message, null, null, null);
-        return postNotification(content + (message == null ? "" : "调试信息：" + message));
+        return postNotification(content + (message == null || "".equals(message) ? "" : "调试信息：" + message), Log.ERROR);
+    }
+
+    private int postNotificationOnError(String content, Throwable throwable) {
+        String debugMessage = "";
+        if (throwable != null) {
+            String trace = Stream.of(throwable.getStackTrace()).map(StackTraceElement::toString).collect(Collectors.joining("\n"));
+            debugMessage = "调试信息：" + trace;
+        }
+        return postNotification(content + debugMessage, Log.ERROR);
     }
 
     private int postNotification(String content) {
-        int requestCode = notificationIdGenerator.generate();
+        return postNotification(content, Log.INFO);
+    }
 
+    private int postNotification(String content, int logLevel) {
+        String dateISO8601 = getNowTimeInISO8601();
+
+        SuidRich suidRich = BF.getSuidRich();
+        NotificationLog notificationLog = new NotificationLog();
+        notificationLog.setLogLevel(logLevel);
+        notificationLog.setTime(dateISO8601);
+        notificationLog.setTag(NOTIFICATION_TITLE);
+        notificationLog.setContent(content);
+        suidRich.insert(notificationLog);
+
+        int requestCode = notificationIdGenerator.generate();
         // 设置取消后的动作
         Intent intent = new Intent(CLEAR_NOTIFICATION_ACTION);
         intent.putExtra("sequence", requestCode);
@@ -525,7 +564,7 @@ public class WebsocketService extends Service implements
 
         // 初始化 notification
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("核心服务")    // 设置标题
+            .setContentTitle(NOTIFICATION_TITLE)    // 设置标题
             .setContentText(content)    // 设置通知文字
             .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
             .setSmallIcon(R.drawable.baseline_contact_mail_24)   // 设置左边的小图标
@@ -539,6 +578,10 @@ public class WebsocketService extends Service implements
         getNotificationManager().notify(CHANNEL_ID, requestCode, notification);
 
         return requestCode;
+    }
+
+    public String getNowTimeInISO8601() {
+        return TimeUtils.getNowTimeInISO8601();
     }
 
     @Override

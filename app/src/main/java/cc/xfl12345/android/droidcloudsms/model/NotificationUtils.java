@@ -34,10 +34,7 @@ public class NotificationUtils {
     public static int postNotification(Context context, String title, String content) {
         int requestCode = notificationIdGenerator.generate();
 
-        // 设置取消后的动作
-        Intent intent = new Intent();
-        intent.putExtra("sequence", requestCode);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, requestCode, new Intent(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT);
 
         // 初始化 notification
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)

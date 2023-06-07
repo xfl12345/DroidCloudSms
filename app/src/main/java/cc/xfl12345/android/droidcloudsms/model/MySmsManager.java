@@ -64,17 +64,7 @@ public class MySmsManager  implements SharedPreferences.OnSharedPreferenceChange
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (ACTION_SIM_STATE_CHANGED.equals(intent.getAction())) {
-                    List<SubscriptionInfo> availableSubscriptionInfoList = myISub.getAvailableSubscriptionInfoList();
-                    boolean currentSimCardAvailable = false;
-
-                    for (SubscriptionInfo subscriptionInfo : availableSubscriptionInfoList) {
-                        if (subscriptionInfo.getSubscriptionId() == mSubId) {
-                            currentSimCardAvailable = true;
-                            break;
-                        }
-                    }
-
-                    if (!currentSimCardAvailable) {
+                    if (myISub.getActiveSubscriptionInfo(mSubId) == null) {
                         mSubId = myISub.getDefaultSmsSubId();
                         setPreferencesSubscriptionbId(mSubId);
                     }

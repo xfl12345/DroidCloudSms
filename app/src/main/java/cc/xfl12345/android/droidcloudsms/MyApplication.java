@@ -10,9 +10,15 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteCursorDriver;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteQuery;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
+import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,9 +27,15 @@ import androidx.core.app.NotificationCompat;
 import com.hjq.permissions.Permission;
 
 import org.teasoft.bee.android.CreateAndUpgradeRegistry;
+import org.teasoft.bee.osql.DatabaseConst;
+import org.teasoft.bee.osql.type.TypeHandler;
 import org.teasoft.beex.android.ApplicationRegistry;
+import org.teasoft.honey.osql.autogen.Ddl;
+import org.teasoft.honey.osql.core.HoneyConfig;
+import org.teasoft.honey.osql.type.TypeHandlerRegistry;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,11 +43,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import cc.xfl12345.android.droidcloudsms.model.AndroidPermissionNamePair;
 import cc.xfl12345.android.droidcloudsms.model.BeeCreateAndUpgrade;
+import cc.xfl12345.android.droidcloudsms.model.MyDatabaseHelper;
 import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.PermissionManager;
 import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionEventHelper;
 import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionListener;
+import cc.xfl12345.android.droidcloudsms.model.database.NotificationLog;
+import cc.xfl12345.android.droidcloudsms.model.database.SmsLog;
 
 public class MyApplication extends Application {
     public static final Integer STALE_NOTIFICATION_ID = 0;
@@ -148,9 +163,39 @@ public class MyApplication extends Application {
             }
         });
 
+
+        try {
+            MyDatabaseHelper helper = new MyDatabaseHelper(context, "droid_cloud_sms.db", null, 1);
+            helper.getWritableDatabase().close();
+            helper.close();
+        } catch (Exception e) {
+            Log.d(MyApplication.class.getCanonicalName(), "创建数据库失败", e);
+        }
         // 初始化数据库框架
+        // InputStream inputStream = getResources().openRawResource(R.raw.bee);
+        // HoneyConfig.getHoneyConfig().resetBeeProperties(inputStream);
+        // try {
+        //     inputStream.close();
+        // } catch (IOException e) {
+        //     throw new RuntimeException(e);
+        // }
+        // TypeHandlerRegistry.register(String.class, new TypeHandler<String>() {
+        //     @Override
+        //     public String process(Class<String> fieldType, Object result) {
+        //         return null;
+        //     }
+        // }, true);
+        // org.teasoft.honey.osql.autogen.Java2DbType.getJava2DbType(
+        //     DatabaseConst.SQLite
+        // ).put("java.lang.String", "text");
         ApplicationRegistry.register(this);//注册上下文
-        CreateAndUpgradeRegistry.register(BeeCreateAndUpgrade.class);
+        // CreateAndUpgradeRegistry.register(BeeCreateAndUpgrade.class);
+        // if(!Ddl.isExistTable(new NotificationLog())) {
+        //     Ddl.createTable(NotificationLog.class, false);
+        // }
+        // if(!Ddl.isExistTable(new SmsLog())) {
+        //     Ddl.createTable(SmsLog.class, false);
+        // }
 
         // 吊起前台保活服务
         websocketServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);
