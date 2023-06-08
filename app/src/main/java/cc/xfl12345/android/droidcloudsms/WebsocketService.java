@@ -235,6 +235,11 @@ public class WebsocketService extends Service implements
             }
 
             @Override
+            public void onReconnecting() {
+                WebSocketManager.StatusListener.super.onReconnecting();
+            }
+
+            @Override
             public void onRetryMaxReached() {
                 postNotification("WebSocket 多次重新连接失败！执行强制重置！");
                 initWebSocket();
@@ -704,6 +709,16 @@ public class WebsocketService extends Service implements
             try {
                 lock.readLock().lock();
                 listenerSet.keySet().parallelStream().forEach(listener -> listener.onDisconnected(reason, code, throwable, response));
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        @Override
+        public void onReconnecting() {
+            try {
+                lock.readLock().lock();
+                listenerSet.keySet().parallelStream().forEach(WebSocketManager.StatusListener::onReconnecting);
             } finally {
                 lock.readLock().unlock();
             }
