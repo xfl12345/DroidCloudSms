@@ -115,7 +115,7 @@ public class SmSender {
             sequence = notificationIdGenerator.generate();
         }
         Intent sentIntent = new Intent(SENT_SM_ACTION);
-        sentIntent.putExtra("id", id);
+        sentIntent.putExtra("dbId", id);
         sentIntent.putExtra("sequence", sequence);
         sentIntent.putExtra("phoneNumber", phoneNumber);
         sentIntent.putExtra("validationCode", validationCode);
@@ -130,7 +130,7 @@ public class SmSender {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int sequence = intent.getIntExtra("sequence", -1);
-                int id = intent.getIntExtra("id", -1);
+                long id = intent.getLongExtra("dbId", -1);
                 String phoneNumber = intent.getStringExtra("phoneNumber");
                 String smContent = intent.getStringExtra("content");
 
