@@ -1,7 +1,13 @@
 package cc.xfl12345.android.droidcloudsms.model.database;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
 public class NotificationLog {
     private Long id;
+
+    private Long utcTimeStamp;
 
     private String time;
 
@@ -18,6 +24,14 @@ public class NotificationLog {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getUtcTimeStamp() {
+        return utcTimeStamp;
+    }
+
+    public void setUtcTimeStamp(Long utcTimeStamp) {
+        this.utcTimeStamp = utcTimeStamp;
     }
 
     public String getTime() {
@@ -51,4 +65,10 @@ public class NotificationLog {
     public void setLogLevel(Integer logLevel) {
         this.logLevel = logLevel;
     }
+
+    public void setTime(ZonedDateTime zonedDateTime) {
+        setTime(zonedDateTime.format(DateTimeFormatter.ISO_INSTANT));
+        setUtcTimeStamp(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toInstant().toEpochMilli());
+    }
+
 }

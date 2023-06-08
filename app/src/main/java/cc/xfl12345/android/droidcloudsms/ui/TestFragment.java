@@ -51,7 +51,7 @@ public class TestFragment extends Fragment implements WebSocketServiceConnection
                     SmSender smSender = websocketService.getSmSender();
                     // smSender.getSmsManager().getMyISub().get
                     SmsTask smsTask = new SmsTask();
-                    smsTask.setCreateTime(TimeUtils.getNowTimeInISO8601());
+                    smsTask.setCreateTime(TimeUtils.getNowTimeTextInISO8601());
                     smsTask.setPhoneNumber(finalPhoneNumber);
                     smsTask.setValidationCode("888");
                     smsTask.setSmsContent("测试");

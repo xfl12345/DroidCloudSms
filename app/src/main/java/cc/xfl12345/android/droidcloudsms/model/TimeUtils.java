@@ -6,8 +6,12 @@ import java.util.TimeZone;
 
 public class TimeUtils {
 
-    public static String getNowTimeInISO8601() {
-        return ZonedDateTime.now(TimeZone.getDefault().toZoneId()).format(DateTimeFormatter.ISO_INSTANT);
+    public static String getNowTimeTextInISO8601() {
+        return getNowTimeInISO8601().format(DateTimeFormatter.ISO_INSTANT);
+    }
+
+    public static ZonedDateTime getNowTimeInISO8601() {
+        return ZonedDateTime.now(TimeZone.getDefault().toZoneId());
     }
 
 }

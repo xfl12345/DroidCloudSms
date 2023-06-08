@@ -1,10 +1,16 @@
 package cc.xfl12345.android.droidcloudsms.model.database;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
 import cc.xfl12345.android.droidcloudsms.model.ws.SmsTask;
 
 public class SmsLog {
 
     private Long id;
+
+    private Long utcTimeStamp;
 
     private String time;
 
@@ -20,6 +26,14 @@ public class SmsLog {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getUtcTimeStamp() {
+        return utcTimeStamp;
+    }
+
+    public void setUtcTimeStamp(Long utcTimeStamp) {
+        this.utcTimeStamp = utcTimeStamp;
     }
 
     public String getTime() {
@@ -54,11 +68,15 @@ public class SmsLog {
         this.content = content;
     }
 
+    public void setTime(ZonedDateTime zonedDateTime) {
+        setTime(zonedDateTime.format(DateTimeFormatter.ISO_INSTANT));
+        setUtcTimeStamp(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toInstant().toEpochMilli());
+    }
+
     public void setSmsTask(SmsTask smsTask) {
         setPhoneNumber(smsTask.getPhoneNumber());
         setValidationCode(smsTask.getValidationCode());
-        // SQLiteDatabase
         setContent(smsTask.getSmsContent());
-        setTime(smsTask.getCreateTime());
+        setTime(ZonedDateTime.parse(smsTask.getCreateTime()));
     }
 }

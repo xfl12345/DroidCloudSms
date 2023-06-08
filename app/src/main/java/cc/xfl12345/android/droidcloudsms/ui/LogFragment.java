@@ -1,9 +1,12 @@
 package cc.xfl12345.android.droidcloudsms.ui;
 
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -14,6 +17,7 @@ import android.widget.Button;
 
 import cc.xfl12345.android.droidcloudsms.R;
 import cc.xfl12345.android.droidcloudsms.databinding.FragmentLogBinding;
+import cc.xfl12345.android.droidcloudsms.model.NotificationLogRecyclerAdapter;
 
 public class LogFragment extends Fragment {
     public LogFragment() {
@@ -32,20 +36,9 @@ public class LogFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_log, container, false);
         FragmentLogBinding binding = FragmentLogBinding.bind(view);
 
-        at.blogc.android.views.ExpandableTextView contentBox = binding.contentBox;
-        Button contentExpandButton = binding.contentExpandButton;
-
-        contentBox.setText(R.string.super_huge_string);
-        contentExpandButton.setText(R.string.click_me_to_expand);
-        contentExpandButton.setOnClickListener(v -> {
-            // 如果已经展开，点击之后会收起，所以要显示“点我展开”
-            contentExpandButton.setText(contentBox.isExpanded()
-                ? R.string.click_me_to_expand
-                : R.string.click_me_to_collapse
-            );
-            contentBox.toggle();
-        });
-
+        RecyclerView recyclerView = binding.recyclerView;
+        recyclerView.setAdapter(new NotificationLogRecyclerAdapter(requireContext()));
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext(), RecyclerView.VERTICAL, false));
 
         return view;
     }

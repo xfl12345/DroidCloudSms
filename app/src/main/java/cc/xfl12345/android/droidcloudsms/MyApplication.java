@@ -10,15 +10,10 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteCursorDriver;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteQuery;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,31 +21,21 @@ import androidx.core.app.NotificationCompat;
 
 import com.hjq.permissions.Permission;
 
-import org.teasoft.bee.android.CreateAndUpgradeRegistry;
-import org.teasoft.bee.osql.DatabaseConst;
-import org.teasoft.bee.osql.type.TypeHandler;
 import org.teasoft.beex.android.ApplicationRegistry;
-import org.teasoft.honey.osql.autogen.Ddl;
-import org.teasoft.honey.osql.core.HoneyConfig;
-import org.teasoft.honey.osql.type.TypeHandlerRegistry;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import cc.xfl12345.android.droidcloudsms.model.AndroidPermissionNamePair;
-import cc.xfl12345.android.droidcloudsms.model.BeeCreateAndUpgrade;
 import cc.xfl12345.android.droidcloudsms.model.MyDatabaseHelper;
 import cc.xfl12345.android.droidcloudsms.model.MyShizukuContext;
 import cc.xfl12345.android.droidcloudsms.model.NotificationUtils;
 import cc.xfl12345.android.droidcloudsms.model.PermissionManager;
 import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionEventHelper;
 import cc.xfl12345.android.droidcloudsms.model.WebSocketServiceConnectionListener;
-import cc.xfl12345.android.droidcloudsms.model.database.NotificationLog;
-import cc.xfl12345.android.droidcloudsms.model.database.SmsLog;
 
 public class MyApplication extends Application {
     public static final Integer STALE_NOTIFICATION_ID = 0;

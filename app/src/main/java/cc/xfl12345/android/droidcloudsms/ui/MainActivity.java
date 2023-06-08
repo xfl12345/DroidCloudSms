@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
             R.id.nav_permission_manager,
             R.id.nav_setting,
             R.id.nav_status,
+            R.id.nav_log,
             R.id.nav_test
         )
         .setOpenableLayout(drawerLayout)

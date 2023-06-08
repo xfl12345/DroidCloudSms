@@ -40,6 +40,9 @@ import java.net.CookiePolicy;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.TimeZone;
@@ -551,12 +554,10 @@ public class WebsocketService extends Service implements
     }
 
     private int postNotification(String content, int logLevel) {
-        String dateISO8601 = getNowTimeInISO8601();
-
         SuidRich suidRich = BF.getSuidRich();
         NotificationLog notificationLog = new NotificationLog();
         notificationLog.setLogLevel(logLevel);
-        notificationLog.setTime(dateISO8601);
+        notificationLog.setTime(TimeUtils.getNowTimeInISO8601());
         notificationLog.setTag(NOTIFICATION_TITLE);
         notificationLog.setContent(content);
         suidRich.insert(notificationLog);
@@ -583,10 +584,6 @@ public class WebsocketService extends Service implements
         getNotificationManager().notify(CHANNEL_ID, requestCode, notification);
 
         return requestCode;
-    }
-
-    public String getNowTimeInISO8601() {
-        return TimeUtils.getNowTimeInISO8601();
     }
 
     @Override
