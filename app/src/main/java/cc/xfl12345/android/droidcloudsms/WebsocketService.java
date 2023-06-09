@@ -129,6 +129,8 @@ public class WebsocketService extends Service implements
 
     private WebSocketStatusEventAmplifier webSocketStatusEventAmplifier = new WebSocketStatusEventAmplifier();
 
+    private ThreadLocal<Boolean> webSocketStatusEventInnerCall = new ThreadLocal<>();
+
     private BroadcastReceiver broadcastReceiver;
 
     private NotificationManager getNotificationManager() {
@@ -213,11 +215,14 @@ public class WebsocketService extends Service implements
 
             @Override
             public void onDisconnected(@Nullable String reason, @Nullable Integer code, @Nullable Throwable throwable, @Nullable Response response) {
+                if (Boolean.TRUE.equals(webSocketStatusEventInnerCall.get())) {
+                    return;
+                }
                 if ((webSocketManager != null && webSocketManager.isManualClose()) || isRecreatingWebSocket()) {
                     return;
                 }
 
-                String message = "WebSocket 连接中断！调试消息：";
+                String message = "";
                 if (code != null) {
                     message += String.format("代码[%s];", code);
                 }
@@ -231,7 +236,7 @@ public class WebsocketService extends Service implements
                     message += String.format("response.Msg=[%s];", response.message());
                 }
 
-                postNotification(message);
+                postNotification("WebSocket 连接中断！调试消息：" + message, Log.ERROR);
             }
 
             @Override
@@ -399,13 +404,13 @@ public class WebsocketService extends Service implements
                                         .dns(okhttpDns)
                                         .build();
                                 } else {
-                                    postNotificationOnConnectFailed("WebSocket登录失败！", loginResponsePayload);
+                                    onDisconnected("WebSocket登录失败！", loginResponsePayload);
                                 }
                             } catch (JsonSyntaxException e) {
                                 postNotificationOnConnectFailed("WebSocket登录请求回执内容解析失败！", e);
                             }
                         } else {
-                            postNotificationOnConnectFailed("WebSocket登录请求失败！", loginResponse.body().toString());
+                            onDisconnected("WebSocket登录请求失败！", loginResponse.body().toString());
                         }
                         loginResponse.close();
                     } catch (IOException e) {
@@ -452,7 +457,9 @@ public class WebsocketService extends Service implements
                 return;
             }
         }
+
         new Thread(() -> {
+            postNotification("开始重新创建 WebSocket");
             destroyWebSocket();
 
             OkHttpClient client = okHttpWebsocketClientGenerator();
@@ -482,7 +489,7 @@ public class WebsocketService extends Service implements
                     @Override
                     public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
                         if (response != null && 403 == response.code()) {
-                            postNotificationOnConnectFailed("WebsSocket 认证过期，即将重新登录。", response.message());
+                            onDisconnected("WebsSocket 认证过期，即将重新登录。", response.message());
                             initWebSocket();
                         }
                     }
@@ -490,7 +497,7 @@ public class WebsocketService extends Service implements
                     @Override
                     public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
                         if (403 == response.code()) {
-                            postNotificationOnConnectFailed("WebsSocket 认证过期，即将重新登录。", response.message());
+                            onDisconnected("WebsSocket 认证过期，即将重新登录。", response.message());
                             initWebSocket();
                         } else {
                             postNotification("WebsSocket 正在连接");
@@ -512,10 +519,20 @@ public class WebsocketService extends Service implements
                 this.webSocketManager = webSocketManager;
             }
 
+            // for (int i = 0; i < 10 && !isWebSocketConnected() && !isClosing; i++) {
+            //     try {
+            //         Thread.sleep(500);
+            //     } catch (InterruptedException e) {
+            //         // ignore
+            //     }
+            // }
+            //
+            // if (!isClosing && !isWebSocketConnected()) {
+            //     webSocketStatusEventAmplifier.onDisconnected("重新创建 WebSocket 失败！", null, null, null);
+            // }
+            postNotification("重新创建 WebSocket 完毕！");
+
             recreatingWebSocket = false;
-            if (!isWebSocketConnected()) {
-                webSocketStatusEventAmplifier.onDisconnected("重新创建 WebSocket 失败！", null, null, null);
-            }
         }, WebsocketService.class.getName() + "_initWebSocket").start();
     }
 
@@ -532,8 +549,10 @@ public class WebsocketService extends Service implements
         return postNotificationOnError(content, throwable);
     }
 
-    private int postNotificationOnConnectFailed(String content, String message) {
+    private int onDisconnected(String content, String message) {
+        webSocketStatusEventInnerCall.set(Boolean.TRUE);
         webSocketStatusEventAmplifier.onDisconnected(message, null, null, null);
+        webSocketStatusEventInnerCall.remove();
         return postNotification(content + (message == null || "".equals(message) ? "" : "调试信息：" + message), Log.ERROR);
     }
 
