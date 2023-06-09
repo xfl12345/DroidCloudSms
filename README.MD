@@ -47,7 +47,7 @@
             生成的 WebSocket URL： `wss://www.sombody.xxx/aa/ws-connect`
       + 自定义 WebSocket URL ？这个暂时没做成可修改的。什么时候安排？咕咕咕。。。（逃
   + 口令  
-    + 这个 WebSocket 口令将会以浏览器默认的数据打包方式打包（ MIME 类型是 `application/x-www-form-urlencoded` ） 使用 HTTP `POST` 方法向远端发送请求（用以鉴权）。远端鉴权框架务必是 [Sa-Token](https://github.com/dromara/Sa-Token) 或者您自己在远端实现完整的 [Sa-Token](https://github.com/dromara/Sa-Token) 鉴权机制。软件会自动保存鉴权 Cookie ，用以断线重连。  
+    + 这个 WebSocket 口令将会以浏览器默认的数据打包方式打包（ MIME 类型是 `application/x-www-form-urlencoded` ，键名是 `accessKeySecret` ） 使用 HTTP `POST` 方法向远端发送请求（用以鉴权）。远端鉴权框架务必是 [Sa-Token](https://github.com/dromara/Sa-Token) 或者您自己在远端实现完整的 [Sa-Token](https://github.com/dromara/Sa-Token) 鉴权机制。软件会自动保存鉴权 Cookie ，用以断线重连。  
 + 重连机制说明  
   + WebSocket 客户端参数  
     + 读超时/写超时：3秒  
