@@ -86,7 +86,7 @@ dependencies {
 
 
     // shizuku API
-    String shizukuVersion = '13.1.1'
+    String shizukuVersion = '13.1.2'
 
     // https://mvnrepository.com/artifact/dev.rikka.shizuku/api
     implementation group: 'dev.rikka.shizuku', name: 'api', version: shizukuVersion
