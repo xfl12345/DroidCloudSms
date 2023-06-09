@@ -28,9 +28,15 @@
         tools:layout="@layout/fragment_status" />
 
     <fragment
-        android:id="@+id/nav_log"
-        android:name="cc.xfl12345.android.droidcloudsms.ui.LogFragment"
-        android:label="@string/nav_label_log"
+        android:id="@+id/nav_sms_log"
+        android:name="cc.xfl12345.android.droidcloudsms.ui.SmsLogFragment"
+        android:label="@string/nav_label_sms_log"
+        tools:layout="@layout/fragment_log" />
+
+    <fragment
+        android:id="@+id/nav_notification_log"
+        android:name="cc.xfl12345.android.droidcloudsms.ui.NotificationLogFragment"
+        android:label="@string/nav_label_notification_log"
         tools:layout="@layout/fragment_log" />
 
     <fragment

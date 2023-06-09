@@ -2,7 +2,6 @@ package cc.xfl12345.android.droidcloudsms.ui;
 
 import android.os.Bundle;
 
-import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -11,17 +10,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.hjq.permissions.OnPermissionCallback;
-import com.hjq.permissions.XXPermissions;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import cc.xfl12345.android.droidcloudsms.MyApplication;
 import cc.xfl12345.android.droidcloudsms.R;
 import cc.xfl12345.android.droidcloudsms.databinding.FragmentPermissionManagerBinding;
-import cc.xfl12345.android.droidcloudsms.model.PermissionItem;
 import cc.xfl12345.android.droidcloudsms.model.PermissionManager;
+import cc.xfl12345.android.droidcloudsms.ui.adapter.PermissionListAdapter;
 
 public class PermissionManagerFragment extends Fragment {
 

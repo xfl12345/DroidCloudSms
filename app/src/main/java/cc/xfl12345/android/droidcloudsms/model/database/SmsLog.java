@@ -20,6 +20,8 @@ public class SmsLog {
 
     private String content;
 
+    private Integer smsResultCode;
+
     public Long getId() {
         return id;
     }
@@ -66,6 +68,14 @@ public class SmsLog {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Integer getSmsResultCode() {
+        return smsResultCode;
+    }
+
+    public void setSmsResultCode(Integer smsResultCode) {
+        this.smsResultCode = smsResultCode;
     }
 
     public void setTime(ZonedDateTime zonedDateTime) {

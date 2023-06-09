@@ -1,26 +1,20 @@
 package cc.xfl12345.android.droidcloudsms.ui;
 
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 
-import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-
-
 import cc.xfl12345.android.droidcloudsms.R;
 import cc.xfl12345.android.droidcloudsms.databinding.FragmentLogBinding;
-import cc.xfl12345.android.droidcloudsms.model.NotificationLogRecyclerAdapter;
+import cc.xfl12345.android.droidcloudsms.ui.adapter.NotificationLogRecyclerAdapter;
 
-public class LogFragment extends Fragment {
-    public LogFragment() {
+public class NotificationLogFragment extends Fragment {
+    public NotificationLogFragment() {
         // Required empty public constructor
     }
 

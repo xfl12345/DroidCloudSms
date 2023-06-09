@@ -1,4 +1,4 @@
-package cc.xfl12345.android.droidcloudsms.ui;
+package cc.xfl12345.android.droidcloudsms.ui.adapter;
 
 import android.app.Activity;
 import android.view.LayoutInflater;

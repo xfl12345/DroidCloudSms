@@ -13,20 +13,21 @@ public class MyDatabaseHelper  extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE notification_log (\n" +
-            "    id               INTEGER PRIMARY KEY NOT NULL,  \n" +
-            "    utc_time_stamp   INTEGER DEFAULT NULL,  \n" +
-            "    time             NCHAR(50) DEFAULT NULL,  \n" +
-            "    tag              NCHAR(32) DEFAULT NULL,  \n" +
-            "    log_level        int(11) DEFAULT NULL,  \n" +
-            "    content          text DEFAULT NULL  \n" +
+            "    id               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
+            "    utc_time_stamp   BIGINT DEFAULT NULL,\n" +
+            "    time             NCHAR(50) DEFAULT NULL,\n" +
+            "    tag              NCHAR(32) DEFAULT NULL,\n" +
+            "    log_level        INTEGER DEFAULT NULL,\n" +
+            "    content          TEXT DEFAULT NULL\n" +
             " )");
         db.execSQL(" CREATE TABLE sms_log (\n" +
-            "    id               INTEGER PRIMARY KEY NOT NULL,  \n" +
-            "    utc_time_stamp   INTEGER DEFAULT NULL,  \n" +
-            "    time             NCHAR(50) DEFAULT NULL,  \n" +
-            "    phone_number     NCHAR(32) DEFAULT NULL,  \n" +
-            "    validation_code  NCHAR(20) DEFAULT NULL,  \n" +
-            "    content          text DEFAULT NULL  \n" +
+            "    id               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
+            "    utc_time_stamp   BIGINT DEFAULT NULL,\n" +
+            "    time             NCHAR(50) DEFAULT NULL,\n" +
+            "    phone_number     NCHAR(32) DEFAULT NULL,\n" +
+            "    validation_code  NCHAR(20) DEFAULT NULL,\n" +
+            "    content          TEXT DEFAULT NULL,\n" +
+            "    sms_result_code  INTEGER DEFAULT NULL\n" +
             " )");
     }
 

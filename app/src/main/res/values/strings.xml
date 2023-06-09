@@ -11,7 +11,8 @@
     <string name="nav_label_permission_manager">权限管理</string>
     <string name="nav_label_setting">设置</string>
     <string name="nav_label_status">状态</string>
-    <string name="nav_label_log">日志</string>
+    <string name="nav_label_notification_log">通知日志</string>
+    <string name="nav_label_sms_log">短信日志</string>
     <string name="nav_label_test">测试</string>
 
 

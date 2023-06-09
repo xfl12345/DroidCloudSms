@@ -21,9 +21,13 @@
             android:icon="@drawable/ic_launcher_foreground"
             android:title="@string/nav_label_status" />
         <item
-            android:id="@+id/nav_log"
+            android:id="@+id/nav_notification_log"
             android:icon="@drawable/ic_launcher_foreground"
-            android:title="@string/nav_label_log" />
+            android:title="@string/nav_label_notification_log" />
+        <item
+            android:id="@+id/nav_sms_log"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:title="@string/nav_label_sms_log" />
         <item
             android:id="@+id/nav_test"
             android:icon="@drawable/ic_launcher_foreground"

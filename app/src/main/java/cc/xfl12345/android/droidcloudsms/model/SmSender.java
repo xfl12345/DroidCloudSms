@@ -12,10 +12,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.RemoteException;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
+import org.teasoft.bee.osql.IncludeType;
+import org.teasoft.honey.osql.core.ConditionImpl;
 import org.teasoft.honey.osql.shortcut.BF;
 
 import cc.xfl12345.android.droidcloudsms.R;
@@ -91,28 +94,10 @@ public class SmSender {
             MySqliteLockManager.lockWrite();
             id = BF.getSuidRich().insertAndReturnId(smsLog);
         } catch (Exception e) {
-            Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(NOTIFICATION_TITLE)
-                .setContentText("保存短信失败")
-                .setSmallIcon(R.drawable.baseline_contact_mail_24)
-                .setContentIntent(PendingIntent.getActivity(
-                    context,
-                    sequence,
-                    new Intent(),
-                    PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
-                ))
-                .setOngoing(false)
-                .setAutoCancel(true)
-                .build();
-            getNotificationManager().notify(
-                CHANNEL_ID,
-                sequence,
-                notification
-            );
+            postNotification(sequence, "保存短信失败！", e);
         } finally {
             MySqliteLockManager.unlockWrite();
         }
-
 
         if (id == 0) {
             sequence = notificationIdGenerator.generate();
@@ -141,9 +126,12 @@ public class SmSender {
                 // case SmsManager.RESULT_ERROR_RADIO_OFF:
                 // case SmsManager.RESULT_ERROR_NULL_PDU:
                 // SmsManager.RESULT_ERROR_GENERIC_FAILURE
-                String notificationContent = (getResultCode() == Activity.RESULT_OK
+                // SmsManager.RESULT_
+                int resultCode = getResultCode();
+                boolean isSuccess = resultCode == Activity.RESULT_OK;
+                String notificationContent = (isSuccess
                     ? "ID:" + id + "，发送成功！"
-                    : String.format("ID:%s，发送失败！状态码：[%s]，", id, getResultCode()))
+                    : String.format("ID:%s，发送失败！状态码：[%s]，", id, resultCode))
                     + String.format("收件人：%s，内容：[%s]", phoneNumber, smContent);
 
                 PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -161,6 +149,20 @@ public class SmSender {
                     .setAutoCancel(true)
                     .build();
                 getNotificationManager().notify(CHANNEL_ID, sequence, notification);
+
+                if (id > 0) {
+                    try {
+                        MySqliteLockManager.lockWrite();
+                        SmsLog smsLog = new SmsLog();
+                        smsLog.setId(id);
+                        smsLog.setSmsResultCode(resultCode);
+                        BF.getSuidRich().updateById(smsLog, new ConditionImpl().setIncludeType(IncludeType.EXCLUDE_BOTH));
+                    } catch (Exception e) {
+                        postNotification(notificationIdGenerator.generate(), "更新短信失败！", e);
+                    } finally {
+                        MySqliteLockManager.unlockWrite();
+                    }
+                }
             }
         };
 
@@ -170,6 +172,28 @@ public class SmSender {
             sentSmActionBroadcastReceiver,
             new IntentFilter(SENT_SM_ACTION),
             ContextCompat.RECEIVER_EXPORTED
+        );
+    }
+
+    protected void postNotification(int sequence, String content, Exception e) {
+        Log.e(SmSender.class.getCanonicalName(), e.getMessage(), e);
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle(NOTIFICATION_TITLE)
+            .setContentText(content + "调试信息：" + e.getMessage())
+            .setSmallIcon(R.drawable.baseline_contact_mail_24)
+            .setContentIntent(PendingIntent.getActivity(
+                context,
+                sequence,
+                new Intent(),
+                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
+            ))
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .build();
+        getNotificationManager().notify(
+            CHANNEL_ID,
+            sequence,
+            notification
         );
     }
 

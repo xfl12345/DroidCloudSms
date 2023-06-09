@@ -572,7 +572,7 @@ public class WebsocketService extends Service implements
     private int postNotification(String content, int logLevel) {
         NotificationLog notificationLog = new NotificationLog();
         notificationLog.setLogLevel(logLevel);
-        notificationLog.setTime(TimeUtils.getNowTimeInISO8601());
+        notificationLog.setTime(TimeUtils.getNowTime());
         notificationLog.setTag(NOTIFICATION_TITLE);
         notificationLog.setContent(content);
         MySqliteLockManager.lockWrite();
