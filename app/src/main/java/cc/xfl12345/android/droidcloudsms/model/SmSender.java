@@ -91,7 +91,6 @@ public class SmSender {
             MySqliteLockManager.lockWrite();
             id = BF.getSuidRich().insertAndReturnId(smsLog);
         } catch (Exception e) {
-            MySqliteLockManager.unlockWrite();
             Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(NOTIFICATION_TITLE)
                 .setContentText("保存短信失败")
@@ -110,6 +109,8 @@ public class SmSender {
                 sequence,
                 notification
             );
+        } finally {
+            MySqliteLockManager.unlockWrite();
         }
 
 
