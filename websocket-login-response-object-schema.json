@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xfl12345/DroidCloudSms/blob/master/websocket-login-response-object-schema.json",
+  "title": "WEBSOCKET LOGIN RESPONSE OBJECT SCHEMA",
+  "description": "WebSocket登录请求之后远端响应的JSON文本格式",
+  "type": "object",
+  "properties": {
+    "success": {
+      "description": "API处理结果，整体上看是否成功",
+      "type": "boolean"
+    },
+    "version": {
+      "description": "API版本号",
+      "type": "string",
+      "default": "1"
+    },
+    "message": {
+      "description": "API消息",
+      "type": "string"
+    },
+    "code": {
+      "description": "API状态码",
+      "type": "integer"
+    },
+    "data": {
+      "description": "API附加数据",
+      "type": "object"
+    }
+  },
+  "required": [
+    "success"
+  ]
+}

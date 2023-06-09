@@ -1,0 +1,12 @@
+{
+  "messageType": "request",
+  "payload": {
+    "operation": "sendSms",
+    "data": {
+      "createTime": "2023-06-09T10:26:19.943Z",
+      "phoneNumber": "16653",
+      "validationCode": "280010",
+      "smsContent": "【XFL的个人简历】您的验证码是 280010 。（共6位，15分钟内有效。切勿将验证码泄漏于他人，如非本人操作请忽略）"
+    }
+  }
+}

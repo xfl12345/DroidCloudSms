@@ -54,6 +54,10 @@
     + Ping/Pong心跳：2秒  
     + 连接超时：6秒  
   + 自定义？这个暂时没做成可修改的。什么时候安排？咕咕咕。。。（逃  
++ 远端响应数据格式要求  
+  + 都是 JSON 格式。详见 [sms-task-request-object-schema.json](./sms-task-request-object-schema.json) 和 [websocket-login-response-object-schema.json](./websocket-login-response-object-schema.json) 这两个 `JSON Schema` 文件。  
+  + 什么你读不懂什么是 `JSON Schema` ？去 [json-schema.org](https://json-schema.org/) 学习一下吧。  
+  + 示例文件：[sms-task-request-object-example.json](./sms-task-request-object-example.json) 和 [websocket-login-response-object-example.json](./websocket-login-response-object-example.json)  
 
 # 写在最后  
 

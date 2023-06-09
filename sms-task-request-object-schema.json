@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xfl12345/DroidCloudSms/blob/master/sms-task-request-object-schema.json",
+  "title": "SMS TASK REQUEST OBJECT SCHEMA",
+  "description": "远端推送的SMS短信发送任务请求JSON文本格式",
+  "type": "object",
+  "properties": {
+    "messageType": {
+      "description": "消息类型。用以区分是请求还是响应。",
+      "enum": ["request", "response"]
+    },
+    "payload": {
+      "properties": {
+        "operation": {
+          "description": "具体操作",
+          "const": "sendSms"
+        },
+        "data": {
+          "description": "具体操作所需要的数据",
+          "type": "object",
+          "properties": {
+            "createTime": {
+              "description": "短信任务创建时间",
+              "type": "string",
+              "format": "date-time"
+            },
+            "phoneNumber": {
+              "description": "短信收件人手机号",
+              "type": "string"
+            },
+            "validationCode": {
+              "description": "短信验证码（可选）",
+              "type": "string"
+            },
+            "smsContent": {
+              "description": "短信内容",
+              "type": "string"
+            }
+          },
+          "required": [
+            "createTime",
+            "phoneNumber",
+            "smsContent"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "data"
+      ]
+    }
+  },
+  "required": [
+    "messageType",
+    "payload"
+  ]
+}
