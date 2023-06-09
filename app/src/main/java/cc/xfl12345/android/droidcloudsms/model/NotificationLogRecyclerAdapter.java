@@ -13,21 +13,15 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 
-import org.teasoft.bee.osql.Op;
 import org.teasoft.bee.osql.OrderType;
-import org.teasoft.bee.osql.api.SuidRich;
 import org.teasoft.honey.osql.core.ConditionImpl;
 import org.teasoft.honey.osql.shortcut.BF;
 
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import at.blogc.android.views.ExpandableTextView;
 import cc.xfl12345.android.droidcloudsms.R;
@@ -41,13 +35,13 @@ public class NotificationLogRecyclerAdapter extends RecyclerView.Adapter<Recycle
 
     private NotificationLog defaultLogItem;
 
-    private Map<Integer, NotificationLog> cacheMap;
+    private List<NotificationLog> items;
 
     private int itemCount = 0;
 
     public NotificationLogRecyclerAdapter(Context context) {
         mContext = context;
-        cacheMap = new ConcurrentHashMap<>(32);
+        // cacheMap = new ConcurrentHashMap<>(32);
 
         ZonedDateTime utcStart = ZonedDateTime.ofInstant(Instant.ofEpochSecond(0), ZoneOffset.UTC);
         defaultLogItem = new NotificationLog();
@@ -57,10 +51,27 @@ public class NotificationLogRecyclerAdapter extends RecyclerView.Adapter<Recycle
         defaultLogItem.setLogLevel(Log.VERBOSE);
         defaultLogItem.setContent("无");
 
-        updateItemCount();
-        new Thread(() -> {
-            getItemAndPreAddCache(0);
-        }, NotificationLogRecyclerAdapter.class.getCanonicalName() + "_Constructor").start();
+        ZonedDateTime now = TimeUtils.getNowTimeInISO8601();
+        ZonedDateTime tomorrowStartInUTC = now
+            .withHour(0)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0)
+            .plusDays(1)
+            .withZoneSameInstant(ZoneOffset.UTC);
+        ZonedDateTime yesterdayStartInUTC = tomorrowStartInUTC.minusDays(2);
+
+        MySqliteLockManager.lockWrite();
+        items = BF.getSuidRich().select(emptyLogItem, new ConditionImpl()
+            .between(
+                "utcTimeStamp",
+                yesterdayStartInUTC.toInstant().toEpochMilli(),
+                tomorrowStartInUTC.toInstant().toEpochMilli()
+            )
+            .orderBy("utcTimeStamp", OrderType.DESC)
+        );
+        itemCount = items.size();
+        MySqliteLockManager.unlockWrite();
     }
 
     @NonNull
@@ -72,54 +83,14 @@ public class NotificationLogRecyclerAdapter extends RecyclerView.Adapter<Recycle
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        new Thread(() -> {
-            asyncUpdateItemCount();
-            NotificationLog notificationLog = cacheMap.get(position);
-            if (notificationLog == null) {
-                notificationLog = getItemAndPreAddCache(position);
-            }
-
-            NotificationLog finalNotificationLog = notificationLog;
-            NormalHolder normalHolder = (NormalHolder) holder;
-            normalHolder.itemView.post(() -> normalHolder.setData(finalNotificationLog));
-        }, NotificationLogRecyclerAdapter.class.getCanonicalName() + "_onBindViewHolder").start();
+        NormalHolder normalHolder = (NormalHolder) holder;
+        NotificationLog finalNotificationLog = items.get(position);
+        normalHolder.itemView.post(() -> normalHolder.setData(finalNotificationLog));
     }
 
     @Override
     public int getItemCount() {
         return itemCount;
-    }
-
-    private void asyncUpdateItemCount() {
-        new Thread(() -> {
-            synchronized (NotificationLogRecyclerAdapter.class) {
-                updateItemCount();
-            }
-        }, NotificationLogRecyclerAdapter.class.getCanonicalName() + "_asyncUpdateItemCount").start();
-    }
-
-    private void updateItemCount() {
-        itemCount = BF.getSuidRich().count(emptyLogItem);
-    }
-
-    private NotificationLog getItemAndPreAddCache(int position) {
-        NotificationLog notificationLog = emptyLogItem;
-
-        synchronized (NotificationLogRecyclerAdapter.class) {
-            List<NotificationLog> items = BF.getSuidRich().select(emptyLogItem, new ConditionImpl()
-                .orderBy("utcTimeStamp", OrderType.ASC)
-                .start(position)
-                .size(20)
-            );
-            if (items.size() > 0) {
-                notificationLog = items.get(0);
-                for (int i = 0; i < items.size(); i++) {
-                    cacheMap.putIfAbsent(position + i, items.get(i));
-                }
-            }
-        }
-
-        return notificationLog;
     }
 
     public class NormalHolder extends RecyclerView.ViewHolder {
@@ -168,8 +139,17 @@ public class NotificationLogRecyclerAdapter extends RecyclerView.Adapter<Recycle
             }
             headerBox.setBackgroundColor(headerBoxColor);
             tagBox.setText(notificationLog.getTag());
-            timeBox.setText(ZonedDateTime.parse(notificationLog.getTime()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")));
+            timeBox.setText(ZonedDateTime.parse(notificationLog.getTime())
+                .withZoneSameInstant(ZoneOffset.systemDefault())
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))
+            );
             contentBox.setText(notificationLog.getContent());
+
+            if (TextViewUtils.getTextViewLines(contentBox, contentBox.getWidth()) <= 1) {
+                contentExpandButton.setVisibility(View.INVISIBLE);
+            } else {
+                contentExpandButton.setVisibility(View.VISIBLE);
+            }
         }
     }
 

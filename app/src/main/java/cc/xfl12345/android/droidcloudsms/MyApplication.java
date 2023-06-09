@@ -47,7 +47,7 @@ public class MyApplication extends Application {
     public static final String SP_KEY_SMS_SIM_SUBSCRIPTION_ID = "smsSimSubscriptionId";
 
 
-    private Context context;
+    private Application context;
 
     private MyShizukuContext myShizukuContext;
 
@@ -158,7 +158,7 @@ public class MyApplication extends Application {
             } catch (Exception e) {
                 Log.d(MyApplication.class.getCanonicalName(), "创建数据库失败", e);
             }
-            ApplicationRegistry.register(this);//注册上下文
+            ApplicationRegistry.register(context);//注册上下文
 
             // 吊起前台保活服务
             websocketServiceIntent = new Intent().setClass(getApplicationContext(), WebsocketService.class);

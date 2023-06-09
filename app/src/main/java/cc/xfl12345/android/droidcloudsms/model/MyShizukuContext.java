@@ -40,9 +40,11 @@ public class MyShizukuContext implements
 
     public MyShizukuContext(Context context) {
         this.context = context;
-        refreshPermissionStatus();
-        Shizuku.addBinderReceivedListener(this);
-        Shizuku.addBinderDeadListener(this);
+        new Thread(() -> {
+            refreshPermissionStatus();
+            Shizuku.addBinderReceivedListener(this);
+            Shizuku.addBinderDeadListener(this);
+        }, MyShizukuContext.class.getCanonicalName() + "_Constructor").start();
     }
 
     @Override

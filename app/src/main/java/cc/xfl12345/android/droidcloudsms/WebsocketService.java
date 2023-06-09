@@ -31,7 +31,6 @@ import net.gotev.cookiestore.SharedPreferencesCookieStore;
 import net.gotev.cookiestore.WebKitSyncCookieManager;
 import net.gotev.cookiestore.okhttp.JavaNetCookieJar;
 
-import org.teasoft.bee.osql.api.SuidRich;
 import org.teasoft.honey.osql.shortcut.BF;
 
 import java.io.IOException;
@@ -40,9 +39,6 @@ import java.net.CookiePolicy;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.TimeZone;
@@ -52,6 +48,7 @@ import java.util.stream.Stream;
 
 import cc.xfl12345.android.droidcloudsms.model.BaseEventAmplifier;
 import cc.xfl12345.android.droidcloudsms.model.IdGenerator;
+import cc.xfl12345.android.droidcloudsms.model.MySqliteLockManager;
 import cc.xfl12345.android.droidcloudsms.model.SmSender;
 import cc.xfl12345.android.droidcloudsms.model.TimeUtils;
 import cc.xfl12345.android.droidcloudsms.model.database.NotificationLog;
@@ -554,13 +551,17 @@ public class WebsocketService extends Service implements
     }
 
     private int postNotification(String content, int logLevel) {
-        SuidRich suidRich = BF.getSuidRich();
         NotificationLog notificationLog = new NotificationLog();
         notificationLog.setLogLevel(logLevel);
         notificationLog.setTime(TimeUtils.getNowTimeInISO8601());
         notificationLog.setTag(NOTIFICATION_TITLE);
         notificationLog.setContent(content);
-        suidRich.insert(notificationLog);
+        MySqliteLockManager.lockWrite();
+        try {
+            BF.getSuidRich().insert(notificationLog);
+        } finally {
+            MySqliteLockManager.unlockWrite();
+        }
 
         int requestCode = notificationIdGenerator.generate();
         // 设置取消后的动作
