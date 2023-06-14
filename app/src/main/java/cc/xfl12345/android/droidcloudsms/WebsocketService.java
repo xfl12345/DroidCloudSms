@@ -311,11 +311,35 @@ public class WebsocketService extends Service implements
         }
     }
 
-    private Dns getCachedOkHttpDns(String hostName, List<InetAddress> records) {
+    private Dns getOkHttpDns(String hostName) {
         return (Dns) domain -> {
             // 使用已有解析
-            if (domain.equals(hostName) && records.size() > 0) {
-                return records;
+            if (domain.equals(hostName)) {
+                HostName tmpHostName = new HostName(hostName);
+                List<InetAddress> records = Collections.emptyList();
+                if (!tmpHostName.isAddress()) {
+                    // 遍历 5 遍 DNS 列表，反复查询 DNS ，应付极端缓慢的海外域名解析
+                    boolean isOk = false;
+                    for (int i = 0; !isOk && i < 5; i++) {
+                        try {
+                            for (Dns item : okHttpDnsArray) {
+                                records = item.lookup(tmpHostName.getHost());
+
+                                if (records.size() > 0) {
+                                    isOk = true;
+                                    break;
+                                }
+                            }
+                        } catch (IOException e) {
+                            Log.d(TAG, "DNS request failed.", e);
+                        }
+                    }
+                    if (records.size() == 0) {
+                        postNotification("WebSocket登录URL域名解析失败！");
+                    } else {
+                        return records;
+                    }
+                }
             }
 
             return Dns.SYSTEM.lookup(domain);
@@ -333,93 +357,61 @@ public class WebsocketService extends Service implements
 
         // 尝试登录
         if (!"".equals(loginUrlInText)) {
-            String ipAddress = "";
-            String hostName = "";
-            URL loginURL = null;
+            HttpUrl okhttpLoginUrl = null;
+
             try {
-                HttpUrl okhttpLoginUrl = HttpUrl.get(loginUrlInText);
-                loginURL = new URL(loginUrlInText);
-                // loginURI = loginURL.toURI();
-
-                // 先开展解析工作
-                hostName = loginURL.getHost();
-                HostName tmpHostName = new HostName(hostName);
-                if (tmpHostName.isAddress()) {
-                    ipAddress = tmpHostName.getHost();
-                } else {
-                    // 遍历 5 遍 DNS 列表，反复查询 DNS ，应付极端缓慢的海外域名解析
-                    boolean isOk = false;
-                    for (int i = 0; !isOk && i < 5; i++) {
-                        try {
-                            for (Dns item : okHttpDnsArray) {
-                                records = item.lookup(tmpHostName.getHost());
-
-                                if (records.size() > 0) {
-                                    ipAddress = records.get(0).getHostAddress();
-                                    isOk = true;
-                                    break;
-                                }
-                            }
-                        } catch (IOException e) {
-                            Log.d(TAG, "DNS request failed.", e);
-                        }
-                    }
-                    if (records.size() == 0) {
-                        postNotification("WebSocket登录URL域名解析失败！");
-                    } else {
-                        okhttpDns = getCachedOkHttpDns(hostName, records);
-                    }
-                }
-
-                // 尝试登录、拿到 Cookie
-                if (ipAddress != null && !"".equals(ipAddress)) {
-                    OkHttpClient client = new OkHttpClient.Builder()
-                        .cookieJar(cookieJar)
-                        .dns(okhttpDns)
-                        .build();
-                    FormBody formBody = new FormBody.Builder()
-                        .add("accessKeySecret", accessKeySecret)
-                        .build();
-
-                    Request request = new Request.Builder()
-                        .url(okhttpLoginUrl)
-                        .post(formBody)
-                        .build();
-
-                    try {
-                        Response loginResponse = client.newCall(request).execute();
-                        // 服务端返回的结果
-                        if (loginResponse.isSuccessful()) {
-                            try {
-                                String loginResponsePayload = loginResponse.body().string();
-                                JsonApiResponseData responseData = new Gson().fromJson(loginResponsePayload, JsonApiResponseData.class);
-                                if (responseData.isSuccess()) {
-                                    return new OkHttpClient.Builder()
-                                        // .callTimeout(60, TimeUnit.SECONDS)
-                                        .readTimeout(3, TimeUnit.SECONDS)
-                                        .writeTimeout(3, TimeUnit.SECONDS)
-                                        .connectTimeout(6, TimeUnit.SECONDS)
-                                        .pingInterval(2, TimeUnit.SECONDS)
-                                        .cookieJar(cookieJar)
-                                        .dns(okhttpDns)
-                                        .build();
-                                } else {
-                                    onDisconnected("WebSocket登录失败！", loginResponsePayload);
-                                }
-                            } catch (JsonSyntaxException e) {
-                                postNotificationOnConnectFailed("WebSocket登录请求回执内容解析失败！", e);
-                            }
-                        } else {
-                            onDisconnected("WebSocket登录请求失败！", loginResponse.body().toString());
-                        }
-                        loginResponse.close();
-                    } catch (IOException e) {
-                        postNotificationOnConnectFailed("WebSocket 连接失败！", e);
-                    }
-                }
-            } catch (MalformedURLException e) {
+                okhttpLoginUrl = HttpUrl.get(loginUrlInText);
+            } catch (Exception e) {
                 postNotificationOnConnectFailed("WebSocket登录URL格式错误！", e);
             }
+
+            if (okhttpLoginUrl != null) {
+                // 尝试登录、拿到 Cookie
+                OkHttpClient client = new OkHttpClient.Builder()
+                    .cookieJar(cookieJar)
+                    .dns(getOkHttpDns(okhttpLoginUrl.host()))
+                    .build();
+                FormBody formBody = new FormBody.Builder()
+                    .add("accessKeySecret", accessKeySecret)
+                    .build();
+
+                Request request = new Request.Builder()
+                    .url(okhttpLoginUrl)
+                    .post(formBody)
+                    .build();
+
+                try {
+                    Response loginResponse = client.newCall(request).execute();
+                    // 服务端返回的结果
+                    if (loginResponse.isSuccessful()) {
+                        try {
+                            String loginResponsePayload = loginResponse.body().string();
+                            JsonApiResponseData responseData = new Gson().fromJson(loginResponsePayload, JsonApiResponseData.class);
+                            if (responseData.isSuccess()) {
+                                return new OkHttpClient.Builder()
+                                    // .callTimeout(60, TimeUnit.SECONDS)
+                                    .readTimeout(3, TimeUnit.SECONDS)
+                                    .writeTimeout(3, TimeUnit.SECONDS)
+                                    .connectTimeout(6, TimeUnit.SECONDS)
+                                    .pingInterval(2, TimeUnit.SECONDS)
+                                    .cookieJar(cookieJar)
+                                    .dns(okhttpDns)
+                                    .build();
+                            } else {
+                                onDisconnected("WebSocket登录失败！", loginResponsePayload);
+                            }
+                        } catch (JsonSyntaxException e) {
+                            postNotificationOnConnectFailed("WebSocket登录请求回执内容解析失败！", e);
+                        }
+                    } else {
+                        onDisconnected("WebSocket登录请求失败！", loginResponse.body().toString());
+                    }
+                    loginResponse.close();
+                } catch (IOException e) {
+                    postNotificationOnConnectFailed("WebSocket 连接失败！", e);
+                }
+            }
+
         }
 
         return null;
