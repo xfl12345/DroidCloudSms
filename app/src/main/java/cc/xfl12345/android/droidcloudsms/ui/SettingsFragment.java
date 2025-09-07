@@ -11,6 +11,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -38,6 +39,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 MyISub myISub = new MyISub();
                 int defaultSmsSubId = myISub.getDefaultSmsSubId();
                 List<SubscriptionInfo> availableSubscriptionInfoList = myISub.getAvailableSubscriptionInfoList();// 手机SIM卡信息
+                if (availableSubscriptionInfoList == null) {
+                    availableSubscriptionInfoList = Collections.emptyList();
+                }
                 String savedSubscriptionId = sharedPreferences.getString(MyApplication.SP_KEY_SMS_SIM_SUBSCRIPTION_ID, null);
                 int saveSubscriptionIdIndex = -1;
                 int defaultSmsSubIdIndex = -1;
@@ -63,18 +67,19 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     }
                 }
 
-                simCardListPreference.setEntries(displayNames.stream().toArray(CharSequence[]::new));
-                simCardListPreference.setEntryValues(settingValuas.stream().toArray(CharSequence[]::new));
-                if (saveSubscriptionIdIndex != -1) {
-                    simCardListPreference.setValueIndex(saveSubscriptionIdIndex);
-                } else {
-                    if (defaultSmsSubIdIndex != -1) {
-                        simCardListPreference.setValueIndex(defaultSmsSubIdIndex);
+                simCardListPreference.setEntries(displayNames.toArray(CharSequence[]::new));
+                simCardListPreference.setEntryValues(settingValuas.toArray(CharSequence[]::new));
+                if (!availableSubscriptionInfoList.isEmpty()) {
+                    if (saveSubscriptionIdIndex != -1) {
+                        simCardListPreference.setValueIndex(saveSubscriptionIdIndex);
                     } else {
-                        simCardListPreference.setValueIndex(0);
+                        if (defaultSmsSubIdIndex != -1) {
+                            simCardListPreference.setValueIndex(defaultSmsSubIdIndex);
+                        } else {
+                            simCardListPreference.setValueIndex(0);
+                        }
                     }
                 }
-
                 isOk = true;
             } catch (ReflectiveOperationException | RemoteException e) {
                 // ignore

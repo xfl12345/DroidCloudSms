@@ -33,6 +33,7 @@ public class PermissionManager {
         this.permissionList = permissionList;
     }
 
+
     public static class Builder {
 
         private final PermissionManager permissionManager;
@@ -85,6 +86,7 @@ public class PermissionManager {
         }
 
         public Builder withPermission(AndroidPermissionNamePair namePair) {
+
             permissionList.add(new PermissionItem() {
                 @Override
                 public String getDisplayName() {
@@ -132,7 +134,7 @@ public class PermissionManager {
 
                 @Override
                 public boolean isGranted() {
-                    return XXPermissions.isGranted(permissionManager.getActivity(), getCodeName());
+                    return XXPermissions.isGrantedPermissions(permissionManager.getActivity(), getCodeName());
                 }
             });
 

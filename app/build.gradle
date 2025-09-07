@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'cc.xfl12345.android.droidcloudsms'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         // Required when setting minSdkVersion to 20 or lower
@@ -12,7 +12,7 @@ android {
 
         applicationId "cc.xfl12345.android.droidcloudsms"
         minSdk 24
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -35,9 +35,9 @@ android {
         // Flag to enable support for the new language APIs
         coreLibraryDesugaringEnabled true
 
-        // Sets Java compatibility to Java 11
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        // Sets Java compatibility to Java 17
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures {
         viewBinding true
@@ -48,19 +48,19 @@ android {
 dependencies {
 
     // https://mvnrepository.com/artifact/com.android.tools/desugar_jdk_libs
-    coreLibraryDesugaring  group: 'com.android.tools', name: 'desugar_jdk_libs', version: '2.0.3'
+    coreLibraryDesugaring  group: 'com.android.tools', name: 'desugar_jdk_libs', version: '2.1.5'
 
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.navigation:navigation-fragment:2.5.3'
-    implementation 'androidx.navigation:navigation-ui:2.5.3'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
+    implementation 'androidx.navigation:navigation-fragment:2.9.3'
+    implementation 'androidx.navigation:navigation-ui:2.9.3'
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
 
     // https://mvnrepository.com/artifact/androidx.preference/preference
-    implementation group: 'androidx.preference', name: 'preference', version: '1.2.0'
+    implementation group: 'androidx.preference', name: 'preference', version: '1.2.1'
 
     // // https://mvnrepository.com/artifact/com.google.android.material/material
     // implementation group: 'com.google.android.material', name: 'material', version: '1.9.0'
@@ -86,7 +86,7 @@ dependencies {
 
 
     // shizuku API
-    String shizukuVersion = '13.1.2'
+    String shizukuVersion = '13.1.5'
 
     // https://mvnrepository.com/artifact/dev.rikka.shizuku/api
     implementation group: 'dev.rikka.shizuku', name: 'api', version: shizukuVersion
@@ -103,17 +103,17 @@ dependencies {
 
     // LSPosed Hidden API Bypass
     // https://mvnrepository.com/artifact/org.lsposed.hiddenapibypass/hiddenapibypass
-    implementation group: 'org.lsposed.hiddenapibypass', name: 'hiddenapibypass', version: '4.3'
+    implementation group: 'org.lsposed.hiddenapibypass', name: 'hiddenapibypass', version: '6.1'
 
     // JSON support
     // // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
     // implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.5'
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
-    implementation group: 'com.google.code.gson', name: 'gson', version: '2.10.1'
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.13.1'
 
     // jakarta
     // https://mvnrepository.com/artifact/jakarta.annotation/jakarta.annotation-api
-    implementation group: 'jakarta.annotation', name: 'jakarta.annotation-api', version: '2.1.1'
+    implementation group: 'jakarta.annotation', name: 'jakarta.annotation-api', version: '3.0.0'
 
     // // Oracle javax JPA
     // // https://mvnrepository.com/artifact/javax.persistence/javax.persistence-api
@@ -121,7 +121,7 @@ dependencies {
 
 
     // 权限请求框架：https://github.com/getActivity/XXPermissions
-    implementation 'com.github.getActivity:XXPermissions:18.0'
+    implementation 'com.github.getActivity:XXPermissions:23.0'
 
     // // https://mvnrepository.com/artifact/com.github.zcweng/switch-button
     // implementation group: 'com.github.zcweng', name: 'switch-button', version: '0.0.3'
@@ -133,11 +133,11 @@ dependencies {
 
     // 判断 字符串 是 IP地址 还是 域名 的工具库
     // https://mvnrepository.com/artifact/com.github.seancfoley/ipaddress
-    implementation group: 'com.github.seancfoley', name: 'ipaddress', version: '5.4.0'
+    implementation group: 'com.github.seancfoley', name: 'ipaddress', version: '5.5.1'
 
 
     // HTTP 请求框架 okhttp3
-    String okHttp3Version = '5.0.0-alpha.11'
+    String okHttp3Version = '5.1.0'
     // https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
     implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: okHttp3Version
 

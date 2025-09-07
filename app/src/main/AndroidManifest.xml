@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="cc.xfl12345.android.droidcloudsms">
 
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:remove="android:maxSdkVersion" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -22,7 +22,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DroidCloudSms"
         android:usesCleartextTraffic="true"
-        tools:targetApi="31">
+        tools:targetApi="34">
         <service
             android:name=".WebsocketService"
             android:enabled="true"

@@ -12,6 +12,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -107,8 +108,7 @@ public class HiddenApiBypassProxy {
     public static Method getDeclaredMethod(@NonNull Class<?> clazz, @NonNull String methodName, Object... args) throws NoSuchMethodException {
         List<Executable> methods = getDeclaredMethods(clazz);
         for (Executable executable : methods) {
-            if (executable instanceof Method) {
-                Method tmpMethod = (Method) executable;
+            if (executable instanceof Method tmpMethod) {
                 if (methodName.equals(tmpMethod.getName()) && isMatch(tmpMethod.getParameterTypes(), args)) {
                     return tmpMethod;
                 }
@@ -121,7 +121,12 @@ public class HiddenApiBypassProxy {
 
     public static Object newInstance(@NonNull Class<?> clazz, Class<?>... initargs) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return HiddenApiBypass.newInstance(clazz,  cast2ObjectArray(initargs));
+            try {
+                return HiddenApiBypass.newInstance(clazz,  cast2ObjectArray(initargs));
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException |
+                     InstantiationException e) {
+                throw new RuntimeException(e);
+            }
         } else {
             try {
                 return clazz.getDeclaredConstructor(splicing(new Class<?>[] {clazz}, initargs));
@@ -133,7 +138,11 @@ public class HiddenApiBypassProxy {
 
     public static Object invoke(@NonNull Class<?> clazz, @Nullable Object thiz, @NonNull String methodName, Object... args) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return HiddenApiBypass.invoke(clazz, thiz, methodName, args);
+            try {
+                return HiddenApiBypass.invoke(clazz, thiz, methodName, args);
+            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
         } else {
             try {
                 Class<?>[] theClassArgs = getParamTypeArray(Class.class, args);
@@ -156,10 +165,9 @@ public class HiddenApiBypassProxy {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static List<Executable> getDeclaredMethods(@NonNull Class<?> clazz) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return (List<Executable>) HiddenApiBypass.getDeclaredMethods(clazz);
+            return HiddenApiBypass.getDeclaredMethods(clazz);
         } else {
             return List.of(clazz.getDeclaredMethods());
         }
@@ -168,7 +176,11 @@ public class HiddenApiBypassProxy {
     @NonNull
     public static Method getDeclaredMethod(@NonNull Class<?> clazz, @NonNull String methodName, @NonNull Class<?>... parameterTypes) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return HiddenApiBypass.getDeclaredMethod(clazz, methodName, parameterTypes);
+            try {
+                return HiddenApiBypass.getDeclaredMethod(clazz, methodName, parameterTypes);
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
         } else {
             try {
                 return clazz.getDeclaredMethod(methodName, parameterTypes);
@@ -182,7 +194,11 @@ public class HiddenApiBypassProxy {
     @SuppressWarnings("unchecked")
     public static <T> Constructor<T> getDeclaredConstructor(@NonNull Class<T> clazz, @NonNull Class<?>... parameterTypes) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return (Constructor<T>) HiddenApiBypass.getDeclaredConstructor(clazz, parameterTypes);
+            try {
+                return (Constructor<T>) HiddenApiBypass.getDeclaredConstructor(clazz, parameterTypes);
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
         } else {
             try {
                 return clazz.getDeclaredConstructor(parameterTypes);
@@ -193,10 +209,9 @@ public class HiddenApiBypassProxy {
     }
 
     @NonNull
-    @SuppressWarnings("unchecked")
     public static List<Field> getInstanceFields(@NonNull Class<?> clazz) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return (List<Field>) HiddenApiBypass.getInstanceFields(clazz);
+            return HiddenApiBypass.getInstanceFields(clazz);
         } else {
             return List.of(clazz.getDeclaredFields())
                     .parallelStream()
@@ -206,10 +221,9 @@ public class HiddenApiBypassProxy {
     }
 
     @NonNull
-    @SuppressWarnings("unchecked")
     public static List<Field> getStaticFields(@NonNull Class<?> clazz) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return (List<Field>) HiddenApiBypass.getStaticFields(clazz);
+            return HiddenApiBypass.getStaticFields(clazz);
         } else {
             return List.of(clazz.getDeclaredFields())
                     .parallelStream()
